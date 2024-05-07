@@ -19,20 +19,20 @@ if __name__ == '__main__':
         "env_name": "CartPole-v1"
     }
 
-    env = gym.make("CartPole-v1", render_mode="human")
-    # env = gym.make("ForestGrowthEnv", render_mode="console")
+    # env = gym.make("CartPole-v1", render_mode="human")
+    env = gym.make("ForestGrowthEnv", render_mode="console")
 
     # check_env(env.unwrapped)
 
     model = PPO("MlpPolicy", env, verbose=1, device="cuda", tensorboard_log=log_dir)
-    model.learn(total_timesteps=5000, progress_bar=True, callback=WandbCallback(
-        gradient_save_freq=1000,
-        model_save_path=f"{wandb.run.dir}/model",
-        verbose=2,
-    ))
+    # model.learn(total_timesteps=5000, progress_bar=True, callback=WandbCallback(
+    #     gradient_save_freq=1000,
+    #     model_save_path=f"{wandb.run.dir}/model",
+    #     verbose=2,
+    # ))
     vec_env = model.get_env()
     obs = vec_env.reset()
-    for i in range(10):
+    for i in range(100):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, done, info = vec_env.step(action)
         vec_env.render()

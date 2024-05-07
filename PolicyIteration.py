@@ -1,26 +1,26 @@
 import numpy as np
 import gymnasium as gym
-from env import ForestGrowthEnv
 
 def policy_iteration(env, gamma=0.99, theta=1e-5):
     def one_step_lookahead(state, V, gamma):
         action_values = np.zeros(env.action_space.n)
         for action in range(env.action_space.n):
-            env.state = state
-            next_state, reward, done, _ = env.step(action)
-            action_values[action] = reward + gamma * V[next_state]
+            # Reset the environment to the current state
+            env.reset()
+            next_state, reward, done, truncated, info = env.step(action)
+            action_values[action] = reward + gamma * V[next_state] * (not done and not truncated)
         return action_values
 
     V = np.zeros(env.observation_space.n)
     policy = np.zeros(env.observation_space.n, dtype=int)
+
     while True:
         # Policy Evaluation
-        while True:
-            delta = 0
-            for state in range(env.observation_space.n):
-                v = V[state]
-                V[state] = np.max(one_step_lookahead(state, V, gamma))
-                delta = max(delta, np.abs(v - V[state]))
+        delta = 0
+        for state in range(env.observation_space.n):
+            v = V[state]
+            V[state] = np.max(one_step_lookahead(state, V, gamma))
+            delta = max(delta, np.abs(v - V[state]))
             if delta < theta:
                 break
 
@@ -40,8 +40,7 @@ def policy_iteration(env, gamma=0.99, theta=1e-5):
     return policy, V
 
 if __name__ == "__main__":
-    env = gym.make("CartPole-v1", render_mode="human")
-    # env = gym.make("ForestGrowthEnv", render_mode="console")
+    env = gym.make("FrozenLake-v1", is_slippery=False)
     policy, value = policy_iteration(env)
-    print(f"Optimal Policy: {policy}")
-    print(f"Value Function: {value}")
+    print("Optimal Policy:", policy)
+    print("Value Function:", value)
