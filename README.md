@@ -1,3 +1,46 @@
+Usage:
+All commands should be run from the root directory and in an appropriate conda or venv python environment, which can be
+set up easily by running
+```
+pip install -r requirements.txt
+```
+inside your activated conda environment or venv. All commands should be run from the root directory 'rl_yield_modelling'
+
+1) Train or retrain RL agents
+```
+python train_[agent].py 
+```
+or 
+```
+python -m scripts.train_[agent].py
+```
+Where [agent] is replaced with one of PPO, DDPG, etc. Currently only the PPO agent is implemented, but future choices 
+will include more options such as DDPG to compare different agents/reinforcement learning algorithms.
+
+This will train a RL agent on the stochastic ForestStandEnv with its current parameters, in this case an agent refers 
+to a hypothetical stand manager with the following actions available at each one year time step: thin %, 
+fertilization_phos %, and fertilization_nit %. The choice of learning algorithm or agent will affect the final outcome
+of the automatic management decisions, with different agents performing different actions as they each learn a distinct 
+policy.
+
+Models are saved to: models/[agent]_forest_<timestamp>.zip
+
+Logs are saved to: logs/[agent]_forest_<timestamp>/
+
+2) Run the Streamlit visualizer and policy debugger
+```
+streamlit run streamlit_demo.py
+```
+3) View training logs with tensorboard
+```
+tensorboard --logdir logs/
+```
+
+4) You can also run a RL agent directly by running
+```
+python run_[agent].py
+```
+
 Main TODO:
 - Train agents with PPO, DDPG, and SAC.
 - Flesh out state dynamics and reward functions.
