@@ -1,0 +1,32 @@
+Metadata-Version: 2.1
+Name: baselines
+Version: 0.1.6
+Summary: OpenAI baselines: high quality implementations of reinforcement learning algorithms
+Home-page: https://github.com/openai/baselines
+Author: OpenAI
+Author-email: gym@openai.com
+License-File: LICENSE
+Requires-Dist: gym<0.16.0,>=0.15.4
+Requires-Dist: scipy
+Requires-Dist: tqdm
+Requires-Dist: joblib
+Requires-Dist: cloudpickle
+Requires-Dist: click
+Requires-Dist: opencv-python
+Provides-Extra: test
+Requires-Dist: filelock; extra == "test"
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: pytest-forked; extra == "test"
+Requires-Dist: atari-py; extra == "test"
+Requires-Dist: matplotlib; extra == "test"
+Requires-Dist: pandas; extra == "test"
+Provides-Extra: mpi
+Requires-Dist: mpi4py; extra == "mpi"
+Provides-Extra: all
+Requires-Dist: filelock; extra == "all"
+Requires-Dist: pytest; extra == "all"
+Requires-Dist: pytest-forked; extra == "all"
+Requires-Dist: atari-py; extra == "all"
+Requires-Dist: matplotlib; extra == "all"
+Requires-Dist: pandas; extra == "all"
+Requires-Dist: mpi4py; extra == "all"
