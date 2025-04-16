@@ -14,7 +14,7 @@ from env.ForestEnv import ForestStandEnv
 # --- Constants ---
 STATE_LABELS = [
     "Age", "Biomass", "Density", "Carbon",
-    "Fire Risk", "Pest", "Windthrow", "Value"
+    "Fire Risk", "Pest Risk", "Wind Risk", "Value"
 ]
 STATE_MIN = np.array([0, 0, 0, 0, 0, 0, 0, 0])
 STATE_MAX = np.array([200, 500, 500, 300, 1, 3, 1, 50000])
@@ -202,7 +202,7 @@ with col2:
     ax.bar(STATE_LABELS, state_norm)
     ax.set_ylim([0, 1])
     ax.set_ylabel("Normalized Value [0–1]")
-    ax.set_title(f"Forest State at Year {step}")
+    ax.set_title(f"Stand State at Year {step}")
     ax.tick_params(axis='x', rotation=45)
     st.pyplot(fig)
 
