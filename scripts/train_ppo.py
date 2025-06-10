@@ -1,9 +1,12 @@
 import os
+import sys
 import torch
 import datetime
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from env.ForestEnv import ForestStandEnv
 
 # Timestamp for logging and saving

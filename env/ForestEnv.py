@@ -6,10 +6,10 @@ class ForestStandEnv(gym.Env):
     def __init__(self):
         super(ForestStandEnv, self).__init__()
 
-        # State: [age, biomass, density, carbon, fire_risk, pest, windthrow, value]
+        # State: [age, biomass, density, fire_risk, windthrow, value]
         self.observation_space = spaces.Box(
-            low=np.array([0, 0, 0, 0, 0, 0, 0, 0]),
-            high=np.array([200, 500, 500, 300, 1, 3, 1, 50000]),
+            low=np.array([0, 0, 0, 0, 0, 0]),
+            high=np.array([200, 500, 500, 1, 1, 50000]),
             dtype=np.float32
         )
 
@@ -30,9 +30,7 @@ class ForestStandEnv(gym.Env):
             np.random.randint(1, 10),  # Age
             np.random.uniform(50, 100),  # Biomass
             np.random.uniform(100, 300),  # Density
-            np.random.uniform(20, 100),  # Carbon stock
             np.random.uniform(0, 0.2),  # Fire risk
-            0,  # Pest level
             np.random.uniform(0, 0.2),  # Windthrow risk
             np.random.uniform(500, 5000),  # Value
         ], dtype=np.float32)
@@ -40,7 +38,7 @@ class ForestStandEnv(gym.Env):
         return self.state, {}
 
     def step(self, action):
-        age, biomass, density, carbon, fire_risk, pest, windthrow, value = self.state
+        age, biomass, density, fire_risk, windthrow, value = self.state
         thin_pct, fert_N, fert_P = action
 
         # --- Biomass before thinning ---
@@ -76,17 +74,6 @@ class ForestStandEnv(gym.Env):
             severity = np.clip(np.random.normal(loc=0.5, scale=0.15), 0.1, 0.9)
             biomass *= (1 - severity)
             fire_risk = 0
-            carbon += biomass * severity * 0.25  # carbon from dead material
-
-        # --- Carbon update ---
-        carbon = 0.5 * biomass
-
-        # --- Pest dynamics ---
-        if biomass > 400 or density > 450:
-            if np.random.rand() < 0.05:
-                pest = min(3, pest + 1)
-        if thin_pct > 0.3:
-            pest = max(0, pest - 1)
 
         # --- Windthrow dynamics ---
         if np.random.rand() < 0.1:
@@ -94,21 +81,19 @@ class ForestStandEnv(gym.Env):
         windthrow = max(0.0, windthrow - 0.05)
 
         # --- Stand value (future potential) ---
-        value = 500 + 5 * biomass + 2 * age - 100 * fire_risk - 50 * pest
+        value = 500 + 5 * biomass + 2 * age - 100 * fire_risk - 50
         value = np.clip(value, 0, 50000)
 
         # --- Cost and reward ---
         cost = self.k1 * thin_pct + self.k2 * fert_N + self.k3 * fert_P
-        reward = revenue + value * 0.01 + carbon - (fire_risk * 100) - (pest * 50) - cost
+        reward = revenue + value * 0.01 - (fire_risk * 100) - cost
 
         # --- Advance time ---
         new_state = np.array([
             age + 1,
             biomass,
             density,
-            carbon,
             fire_risk,
-            pest,
             windthrow,
             value
         ], dtype=np.float32)
@@ -125,4 +110,3 @@ class ForestStandEnv(gym.Env):
 
     def render(self):
         print(f"Age: {self.state[0]}, Biomass: {self.state[1]:.2f}, Fire Risk: {self.state[6]:.2f}")
-

@@ -2,3 +2,7 @@
 __pycache__/
 venv/
 wandb/
+logs/
+pmrc/
+data/
+models/
