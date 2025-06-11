@@ -1,7 +1,10 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
+from typing import Dict
 
+# TODO: Initial conditions
+# TODO: Planting and seedling costs are per density/tpa
 
 price_table = {
     "costs": {
@@ -21,6 +24,7 @@ price_table = {
     },
 }
 
+# TODO: Look to rscript for product specs division
 product_specs_table = {
     "pulp_diameter_max": 5,
     "cns_diameter_max": 7,
@@ -107,6 +111,7 @@ class ForestStandEnv(gym.Env):
     def __init__(self):
         super(ForestStandEnv, self).__init__()
 
+        # TODO: Expand state variables to include markov assumptions and more true to PMRC implementation
         # State: [age, biomass, density, fire_risk, windthrow, value]
         self.observation_space = spaces.Box(
             low=np.array([0, 0, 0, 0, 0, 0]),
@@ -151,6 +156,7 @@ class ForestStandEnv(gym.Env):
         density = min(500, density + np.random.uniform(1, 3))  # passive regen
 
         # --- Timber revenue from harvested biomass ---
+        # TODO: Discount this to T_0, this is PV, should converge to roughly the same as LEV
         harvested_biomass = biomass_before_thinning * thin_pct
         harvest_value = harvested_biomass * 10  # unit price per biomass
         revenue = harvest_value  # can accumulate in agent if modeled
@@ -172,6 +178,8 @@ class ForestStandEnv(gym.Env):
         # --- Fire event ---
         fire_event = np.random.rand() < fire_risk
         if fire_event:
+            # TODO: Fire risk accumulating from biomass or severity accumulating form biomass?
+            # TODO: Prescribed burn action to mitigate fire risk.
             severity = np.clip(np.random.normal(loc=0.5, scale=0.15), 0.1, 0.9)
             biomass *= (1 - severity)
             fire_risk = 0
