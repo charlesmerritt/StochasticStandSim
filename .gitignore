@@ -1,8 +1,0 @@
-.idea/
-__pycache__/
-venv/
-wandb/
-logs/
-pmrc/
-data/
-models/
