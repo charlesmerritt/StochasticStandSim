@@ -1,220 +1,683 @@
-import streamlit as st
+"""Interactive Streamlit demo for :mod:`core.stand_env`."""
+
+from __future__ import annotations
+
+import io
+from dataclasses import dataclass, field
+from typing import Dict, Iterable, List, Optional, Tuple
+
 import numpy as np
-import sys
-import os
-from glob import glob
-from stable_baselines3 import PPO
-import plotly.graph_objects as go
 import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from core.stand_env import StandEnv
+try:  # Stable Baselines is optional; the UI gracefully degrades if missing.
+    from stable_baselines3 import PPO
+except Exception:  # pragma: no cover - optional dependency for the demo app.
+    PPO = None
 
-STATE_LABELS = [
-    "Age", "Biomass", "Density",
-    "Fire Risk", "Wind Risk", "Value"
+from core.stand_env import StandConfig, StandEnv
+
+
+# --------------------------------------------------------------------------- UI
+
+STATE_SERIES = [
+    ("age", "Age (years)"),
+    ("biomass", "Biomass (tons/ac)"),
+    ("tpa", "Trees per acre"),
+    ("basal_area", "Basal area (ft²/ac)"),
+    ("risk", "Disturbance risk"),
+    ("value", "Stand value ($/ac)"),
 ]
 
-class PlotManager:
-    def __init__(self, labels):
-        self.labels = labels
-        self.history = []
 
-    def add(self, obs):
-        row = obs.flatten().tolist()
-        self.history.append(row)
+@dataclass
+class DisturbanceSetting:
+    """Configuration for a single disturbance type."""
 
-    def plot(self, fire_steps=None):
-        T = len(self.history)
-        if T < 2:
-            st.info(f"Waiting for more data… ({T}/2 timesteps)")
-            return
-
-        sequences = list(zip(*self.history))
-        fig = go.Figure()
-
-        for i, seq in enumerate(sequences):
-            fig.add_trace(
-                go.Scatter(
-                    x=list(range(1, T + 1)),
-                    y=seq,
-                    mode="lines",
-                    name=self.labels[i]
-                )
-            )
-
-        if fire_steps:
-            max_y = max(max(seq) for seq in sequences)
-            fig.add_trace(
-                go.Scatter(
-                    x=fire_steps,
-                    y=[max_y] * len(fire_steps),
-                    mode="markers",
-                    marker=dict(color="red", size=8),
-                    name="Fire Event"
-                )
-            )
-
-        fig.update_layout(
-            title="Forest Stand State Trajectory",
-            xaxis_title="Time Step",
-            yaxis_title="Value",
-            legend_title="State Variables",
-            margin=dict(l=40, r=20, t=30, b=40),
-            template="plotly_white"
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    enabled: bool = True
+    probability: float = 0.05
+    severity_min: float = 0.1
+    severity_max: float = 0.35
+    envelope_boost: float = 0.1
+    envelope_years: int = 5
+    emoji: str = "🔥"
+    label: str = "Fire"
 
 
-st.set_page_config(layout="wide")
-st.title("Forest Stand Dynamics Visualizer")
+DISTURBANCE_TEMPLATES: Dict[str, DisturbanceSetting] = {
+    "fire": DisturbanceSetting(emoji="🔥", label="Fire", probability=0.04, severity_max=0.45),
+    "wind": DisturbanceSetting(emoji="💨", label="Wind", probability=0.03, severity_max=0.3),
+    "insect": DisturbanceSetting(emoji="🪲", label="Insects", probability=0.05, severity_max=0.25),
+}
 
-# session state init
-if "env" not in st.session_state:
-    st.session_state.env = StandEnv()
-    st.session_state.state, _ = st.session_state.env.reset()
-    st.session_state.step = 0
-    st.session_state.done = False
-    st.session_state.first_action = False
-    st.session_state.forest_state_history = [st.session_state.state]
-    st.session_state.ppo_actions = []
-    st.session_state.messages = []
-    st.session_state.cumulative_revenue = 0.0
-    st.session_state.max_horizon = 200
 
-# model selection
-model_files = sorted(glob(os.path.join("models", "ppo_forest_*.zip")))
-model_names = [os.path.basename(f) for f in model_files]
+DISTURBANCE_EFFECTS = {
+    "fire": {"biomass": 0.5, "tpa": 0.4, "basal_area": 0.6, "risk": 0.3},
+    "wind": {"biomass": 0.4, "tpa": 0.45, "basal_area": 0.35, "risk": 0.25},
+    "insect": {"biomass": 0.35, "tpa": 0.2, "basal_area": 0.3, "risk": 0.2},
+}
 
-st.sidebar.markdown("### Load PPO Model")
-if model_names:
-    choice = st.sidebar.selectbox("Select PPO model", model_names)
-    if st.session_state.get("selected_model") != choice:
-        try:
-            st.session_state.ppo_model = PPO.load(os.path.join("models", choice), device="cpu")
-            st.session_state.selected_model = choice
-            st.sidebar.success(f"Loaded {choice}")
-        except Exception as e:
-            st.session_state.ppo_model = None
-            st.sidebar.error(f"Load failed: {e}")
-else:
-    st.sidebar.warning("No PPO models found")
-    st.session_state.ppo_model = None
 
-# controls
-if not st.session_state.first_action:
-    st.session_state.max_horizon = st.sidebar.number_input(
-        "Simulation Horizon (Years)", min_value=1, max_value=500, value=200
+# ---------------------------------------------------------------------- Helpers
+
+
+def _initial_product_mix() -> Dict[str, float]:
+    return {"Pulpwood": 0.0, "Chip-n-saw": 0.0, "Sawtimber": 0.0}
+
+
+def _derive_product_mix(state: Dict[str, float], acreage: float) -> Dict[str, float]:
+    """Heuristic breakdown of products based on stand structure."""
+
+    mix = _initial_product_mix()
+    biomass = max(state.get("biomass", 0.0), 0.0)
+    basal_area = max(state.get("basal_area", 0.0), 0.0)
+    tpa = max(state.get("tpa", 0.0), 1e-6)
+
+    # Approximate quadratic mean diameter in inches.
+    avg_dbh = np.sqrt(max(basal_area, 1e-6) / (0.005454 * tpa)) * 12.0  # ft -> inches
+
+    # Use smooth transitions to partition biomass among products.
+    pulp_share = float(1.0 / (1.0 + np.exp((avg_dbh - 6.5) / 0.7)))
+    saw_share = float(1.0 / (1.0 + np.exp(-(avg_dbh - 11.5) / 0.8)))
+    chip_share = float(max(0.0, 1.0 - pulp_share - saw_share))
+
+    total_biomass = biomass * max(acreage, 1.0)
+    mix["Pulpwood"] = total_biomass * pulp_share
+    mix["Sawtimber"] = total_biomass * saw_share
+    mix["Chip-n-saw"] = total_biomass * chip_share
+    return mix
+
+
+def _state_dict_from_env(env: StandEnv) -> Dict[str, float]:
+    state = env.state
+    return {key: float(state.get(key, 0.0)) for key, _ in STATE_SERIES}
+
+
+def _encode_state(env: StandEnv, state: Dict[str, float]) -> np.ndarray:
+    env._state = dict(state)
+    return env._encode_state(env._state)
+
+
+def _format_state_table(state: Dict[str, float]) -> pd.DataFrame:
+    rows = []
+    for key, label in STATE_SERIES:
+        value = state.get(key, np.nan)
+        rows.append((label, value))
+    df = pd.DataFrame(rows, columns=["Metric", "Value"])
+    return df
+
+
+def _probability_slider(label: str, default: float) -> float:
+    return st.slider(label, min_value=0.0, max_value=1.0, value=float(default), step=0.01)
+
+
+def _severity_slider(label: str, default_min: float, default_max: float) -> Tuple[float, float]:
+    return st.slider(
+        label,
+        min_value=0.0,
+        max_value=1.0,
+        value=(float(default_min), float(default_max)),
+        step=0.01,
     )
-else:
-    st.sidebar.markdown(f"**Horizon:** {st.session_state.max_horizon}")
 
-thin_pct = st.sidebar.slider("Thinning %", 0.0, 1.0, 0.0, 0.01)
-fert_N = st.sidebar.slider("Nitrogen Fert %", 0.0, 1.0, 0.0, 0.01)
-fert_P = st.sidebar.slider("Phosphorus Fert %", 0.0, 1.0, 0.0, 0.01)
 
-if st.sidebar.button("Reset"):
-    st.session_state.env = ForestStandEnv()
-    st.session_state.state, _ = st.session_state.env.reset()
+def _build_disturbance_settings() -> Dict[str, DisturbanceSetting]:
+    settings: Dict[str, DisturbanceSetting] = {}
+    st.sidebar.header("Disturbance Configuration")
+    for key, template in DISTURBANCE_TEMPLATES.items():
+        with st.sidebar.expander(f"{template.label} settings", expanded=False):
+            enabled = st.checkbox(
+                f"Enable {template.label}", value=template.enabled, key=f"toggle_{key}"
+            )
+            prob = _probability_slider("Annual probability", template.probability)
+            sev_min, sev_max = _severity_slider(
+                "Severity range", template.severity_min, template.severity_max
+            )
+            boost = st.slider(
+                "Post-event probability boost",
+                min_value=0.0,
+                max_value=1.0,
+                value=float(template.envelope_boost),
+                step=0.01,
+            )
+            years = st.slider(
+                "Duration of elevated risk (years)",
+                min_value=0,
+                max_value=25,
+                value=int(template.envelope_years),
+            )
+
+        settings[key] = DisturbanceSetting(
+            enabled=enabled,
+            probability=prob,
+            severity_min=sev_min,
+            severity_max=sev_max,
+            envelope_boost=boost,
+            envelope_years=years,
+            emoji=template.emoji,
+            label=template.label,
+        )
+    return settings
+
+
+def _initialise_disturbance_status(settings: Dict[str, DisturbanceSetting]) -> Dict[str, Dict[str, float]]:
+    status: Dict[str, Dict[str, float]] = {}
+    for key, cfg in settings.items():
+        status[key] = {
+            "base_prob": cfg.probability,
+            "current_prob": cfg.probability if cfg.enabled else 0.0,
+            "boost_years": 0,
+        }
+    return status
+
+
+def _apply_envelope_decay(status: Dict[str, Dict[str, float]], settings: Dict[str, DisturbanceSetting]) -> None:
+    for key, state in status.items():
+        cfg = settings[key]
+        if state["boost_years"] > 0:
+            state["boost_years"] -= 1
+            if state["boost_years"] == 0:
+                state["current_prob"] = cfg.probability if cfg.enabled else 0.0
+
+
+def _apply_disturbances(
+    env: StandEnv,
+    settings: Dict[str, DisturbanceSetting],
+    status: Dict[str, Dict[str, float]],
+    rng: np.random.Generator,
+) -> Tuple[Dict[str, float], List[Dict[str, float]]]:
+    events: List[Dict[str, float]] = []
+    current_state = dict(env.state)
+
+    for key, cfg in settings.items():
+        state = status[key]
+        if not cfg.enabled:
+            state["current_prob"] = 0.0
+            continue
+
+        prob = float(np.clip(state.get("current_prob", cfg.probability), 0.0, 1.0))
+        trigger = rng.random() < prob
+        if not trigger:
+            continue
+
+        severity = float(np.clip(rng.uniform(cfg.severity_min, cfg.severity_max), 0.0, 1.0))
+        effects = DISTURBANCE_EFFECTS.get(key, {})
+        for attr, weight in effects.items():
+            if attr not in current_state:
+                continue
+            current_state[attr] = max(0.0, current_state[attr] * (1.0 - severity * weight))
+
+        current_state["risk"] = float(np.clip(current_state.get("risk", 0.0) + severity * 0.2, 0.0, 1.0))
+        state["boost_years"] = cfg.envelope_years
+        state["current_prob"] = float(np.clip(prob + cfg.envelope_boost, 0.0, 1.0))
+
+        events.append(
+            {
+                "type": key,
+                "label": cfg.label,
+                "severity": severity,
+                "emoji": cfg.emoji,
+            }
+        )
+
+    _encode_state(env, current_state)
+    return current_state, events
+
+
+def _apply_treatments(
+    env: StandEnv,
+    treatments: Dict[str, bool],
+    disturbance_status: Dict[str, Dict[str, float]],
+) -> Dict[str, float]:
+    state = dict(env.state)
+
+    if treatments.get("prescribed_fire"):
+        state["risk"] = max(0.0, state.get("risk", 0.0) - 0.1)
+        fire_status = disturbance_status.get("fire")
+        if fire_status is not None:
+            fire_status["current_prob"] = max(0.0, fire_status["current_prob"] - 0.1)
+        state["biomass"] = max(0.0, state.get("biomass", 0.0) * 0.98)
+
+    if treatments.get("pesticide"):
+        insect = disturbance_status.get("insect")
+        if insect:
+            insect["current_prob"] = max(0.0, insect["current_prob"] - 0.15)
+        state["risk"] = max(0.0, state.get("risk", 0.0) - 0.05)
+
+    if treatments.get("fertiliser"):
+        # Fertiliser effect is primarily handled via the action vector, but we
+        # allow a small immediate bump to reflect operational assumptions.
+        state["biomass"] = state.get("biomass", 0.0) * 1.01
+        state["basal_area"] = state.get("basal_area", 0.0) * 1.005
+
+    _encode_state(env, state)
+    return state
+
+
+def _plot_state_history(history: List[Dict[str, float]], events: List[Dict[str, float]]) -> None:
+    if not history:
+        st.info("Run at least one step to view the trajectory.")
+        return
+
+    df = pd.DataFrame(history)
+    df.index.name = "Step"
+    fig = go.Figure()
+    for key, label in STATE_SERIES:
+        if key not in df.columns:
+            continue
+        fig.add_trace(
+            go.Scatter(x=df.index, y=df[key], mode="lines", name=label)
+        )
+
+    if events:
+        xs, ys, texts = [], [], []
+        for event in events:
+            step = event.get("step")
+            if step is None or step >= len(df):
+                continue
+            xs.append(step)
+            ys.append(df.loc[step, "basal_area"] if "basal_area" in df.columns else df.loc[step].max())
+            texts.append(event.get("emoji", "❗"))
+        if xs:
+            fig.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="text",
+                    text=texts,
+                    textposition="top center",
+                    showlegend=False,
+                )
+            )
+
+    fig.update_layout(
+        height=450,
+        margin=dict(l=40, r=20, t=30, b=40),
+        template="plotly_white",
+        xaxis_title="Step",
+        yaxis_title="Value",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _plot_product_history(product_history: List[Dict[str, float]]) -> None:
+    if not product_history:
+        return
+
+    df = pd.DataFrame(product_history)
+    df.index.name = "Step"
+    fig = go.Figure()
+    for column in df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df[column],
+                mode="lines",
+                stackgroup="one",
+                name=column,
+            )
+        )
+    fig.update_layout(
+        height=350,
+        title="Product distribution (tons across acreage)",
+        xaxis_title="Step",
+        yaxis_title="Estimated volume",
+        template="plotly_white",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ------------------------------------------------------------------- UI Helpers
+
+
+def _render_initialisation_controls() -> Tuple[Dict[str, float], float, int, Dict[str, DisturbanceSetting]]:
+    st.sidebar.header("Stand initialisation")
+    init_mode = st.sidebar.radio(
+        "Starting state",
+        options=("Plant new stand", "Load stand table"),
+    )
+
+    acreage = float(st.sidebar.number_input("Managed acreage", min_value=1.0, value=50.0))
+    horizon = int(
+        st.sidebar.number_input("Time horizon (years)", min_value=1, max_value=500, value=120)
+    )
+
+    if init_mode == "Plant new stand":
+        planting_age = float(st.sidebar.number_input("Initial age", min_value=0.0, value=1.0))
+        tpa = float(
+            st.sidebar.number_input("Planting density (trees/ac)", min_value=50.0, value=600.0)
+        )
+        basal_area = float(
+            st.sidebar.number_input("Initial basal area (ft²/ac)", min_value=1.0, value=20.0)
+        )
+        biomass = float(
+            st.sidebar.number_input("Initial biomass (tons/ac)", min_value=0.1, value=12.0)
+        )
+        site_index = float(
+            st.sidebar.number_input("Site index", min_value=50.0, max_value=200.0, value=120.0)
+        )
+        state = {
+            "age": planting_age,
+            "biomass": biomass,
+            "tpa": tpa,
+            "basal_area": basal_area,
+            "risk": 0.01,
+            "value": 0.0,
+            "site_index": site_index,
+        }
+    else:
+        uploaded = st.sidebar.file_uploader("Stand table CSV", type=["csv"])
+        if uploaded is None:
+            st.sidebar.warning("Upload a stand table to continue.")
+            st.stop()
+
+        with io.BytesIO(uploaded.read()) as buffer:
+            df = pd.read_csv(buffer)
+        st.sidebar.dataframe(df.head())
+        if df.empty:
+            st.sidebar.error("Stand table is empty")
+            st.stop()
+
+        row = int(
+            st.sidebar.number_input(
+                "Row to initialise from", min_value=0, max_value=len(df) - 1, value=0
+            )
+        )
+        record = df.iloc[row].to_dict()
+        state = {
+            "age": float(record.get("age", 0.0)),
+            "biomass": float(record.get("biomass", record.get("Biomass", 0.0))),
+            "tpa": float(record.get("tpa", record.get("TPA", 0.0))),
+            "basal_area": float(record.get("basal_area", record.get("BA", 0.0))),
+            "risk": float(record.get("risk", record.get("Risk", 0.0))),
+            "value": float(record.get("value", record.get("Value", 0.0))),
+            "site_index": float(record.get("site_index", record.get("SiteIndex", 120.0))),
+        }
+
+    disturbance_settings = _build_disturbance_settings()
+    return state, acreage, horizon, disturbance_settings
+
+
+def _create_environment(
+    state: Dict[str, float],
+    horizon: int,
+    disturbance_settings: Dict[str, DisturbanceSetting],
+) -> StandEnv:
+    total_prob = sum(cfg.probability for cfg in disturbance_settings.values() if cfg.enabled)
+    growth_cfg = {
+        "age_increment": 1.0,
+        "biomass_growth": 2.5,
+        "basal_area_growth": 1.8,
+        "risk_increment": min(total_prob * 0.1, 0.05),
+    }
+    disturbance_cfg = {
+        "catastrophe_threshold": 1.5,  # Disable deterministic catastrophic loss.
+        "baseline_risk": 0.0,
+        "catastrophe_severity": 0.0,
+    }
+    config = StandConfig(
+        initial_age=state.get("age", 1.0),
+        initial_tpa=state.get("tpa", 500.0),
+        initial_basal_area=state.get("basal_area", 20.0),
+        initial_biomass=state.get("biomass", 10.0),
+        site_index=state.get("site_index", 120.0),
+        risk_level=state.get("risk", 0.01),
+        horizon=horizon,
+        growth_config=growth_cfg,
+        disturbance_config=disturbance_cfg,
+    )
+    env = StandEnv(config=config)
+    obs, _ = env.reset()
+    _encode_state(env, state)
+    return env
+
+
+def _ensure_session_defaults() -> None:
+    defaults = {
+        "env": None,
+        "history": [],
+        "product_history": [],
+        "events": [],
+        "step": 0,
+        "done": False,
+        "cumulative_reward": 0.0,
+        "actions": [],
+        "disturbance_status": {},
+        "disturbance_settings": {},
+        "acreage": 1.0,
+        "rng": np.random.default_rng(),
+        "ppo_model": None,
+        "ppo_choice": None,
+    }
+    for key, value in defaults.items():
+        st.session_state.setdefault(key, value)
+
+
+def _reset_environment(
+    initial_state: Dict[str, float],
+    acreage: float,
+    horizon: int,
+    disturbance_settings: Dict[str, DisturbanceSetting],
+) -> None:
+    env = _create_environment(initial_state, horizon, disturbance_settings)
+    st.session_state.env = env
+    st.session_state.history = [_state_dict_from_env(env)]
+    st.session_state.product_history = [_derive_product_mix(env.state, acreage)]
+    st.session_state.events = []
     st.session_state.step = 0
     st.session_state.done = False
-    st.session_state.first_action = False
-    st.session_state.forest_state_history = [st.session_state.state]
-    st.session_state.ppo_actions = []
-    st.session_state.messages = []
-    st.session_state.cumulative_revenue = 0.0
-    st.rerun()
+    st.session_state.cumulative_reward = 0.0
+    st.session_state.actions = []
+    st.session_state.acreage = acreage
+    st.session_state.disturbance_settings = disturbance_settings
+    st.session_state.disturbance_status = _initialise_disturbance_status(disturbance_settings)
+    st.session_state.rng = np.random.default_rng()
 
-col1, col2 = st.columns([1, 2])
 
-with col1:
-    st.subheader("Manual Step")
-    if st.button("Step") and not st.session_state.done:
-        action = np.array([thin_pct, fert_N, fert_P])
-        new_state, reward, done, _, info = st.session_state.env.step(action)
-        st.session_state.state = new_state
-        st.session_state.done = done
-        st.session_state.step += 1
-        st.session_state.first_action = True
-        st.session_state.forest_state_history.append(new_state)
-        rev = info.get("revenue", 0.0)
-        st.session_state.cumulative_revenue += rev
+def _load_available_models() -> List[str]:
+    if PPO is None:
+        return []
+    models = st.sidebar.file_uploader(
+        "Upload PPO policy (zip)",
+        type=["zip"],
+        accept_multiple_files=True,
+        key="model_uploader",
+    )
+    names: List[str] = []
+    if not models:
+        return names
 
-        st.session_state.messages.append(
-            f"success: Step {st.session_state.step}, reward {reward:.2f}, revenue {rev:.2f}"
-        )
-        if info.get("fire_event"):
-            sev = info.get("fire_severity", 0.0)
-            st.session_state.messages.append(
-                f"warning: 🔥 Fire at step {st.session_state.step}, severity {sev:.2f}"
-            )
-        st.rerun()
+    st.session_state.setdefault("uploaded_models", {})
+    for file in models:
+        name = file.name
+        if name in st.session_state.uploaded_models:
+            names.append(name)
+            continue
+        bytes_data = file.read()
+        st.session_state.uploaded_models[name] = io.BytesIO(bytes_data)
+        names.append(name)
+    return names
 
-    st.subheader("PPO Step")
-    if st.button("Auto Step") and not st.session_state.done:
-        model = st.session_state.ppo_model
-        if model:
-            action, _ = model.predict(st.session_state.state, deterministic=True)
-            new_state, reward, done, _, info = st.session_state.env.step(action)
-            st.session_state.state = new_state
-            st.session_state.done = done
-            st.session_state.step += 1
-            st.session_state.first_action = True
-            st.session_state.forest_state_history.append(new_state)
-            st.session_state.ppo_actions.append(action.tolist())
-            rev = info.get("revenue", 0.0)
-            st.session_state.cumulative_revenue += rev
 
-            st.session_state.messages.append(
-                f"success: PPO step {st.session_state.step}, reward {reward:.2f}, revenue {rev:.2f}"
-            )
-            if info.get("fire_event"):
-                sev = info.get("fire_severity", 0.0)
-                st.session_state.messages.append(
-                    f"warning: 🔥 Fire at step {st.session_state.step}, severity {sev:.2f}"
-                )
-            st.rerun()
+def _select_model(names: Iterable[str]) -> None:
+    if PPO is None or not names:
+        return
+
+    choice = st.sidebar.selectbox("Select uploaded policy", options=list(names))
+    if not choice:
+        return
+
+    if st.session_state.ppo_choice == choice:
+        return
+
+    buffer = st.session_state.uploaded_models.get(choice)
+    if buffer is None:
+        return
+
+    buffer.seek(0)
+    try:
+        st.session_state.ppo_model = PPO.load(buffer, device="cpu")
+        st.session_state.ppo_choice = choice
+        st.sidebar.success(f"Loaded policy: {choice}")
+    except Exception as exc:  # pragma: no cover - user feedback path.
+        st.sidebar.error(f"Failed to load PPO model: {exc}")
+        st.session_state.ppo_model = None
+        st.session_state.ppo_choice = None
+
+
+def _draw_action_controls() -> Tuple[np.ndarray, Dict[str, bool]]:
+    st.sidebar.header("Management actions")
+    thin_pct = st.sidebar.slider("Thin proportion", 0.0, 0.6, 0.0, step=0.01)
+    fert_toggle = st.sidebar.checkbox("Apply fertiliser", value=False)
+    fert_strength = st.sidebar.slider("Fertiliser intensity", 0.0, 1.0, 0.3, step=0.05)
+    pesticide = st.sidebar.checkbox("Apply pesticide treatment", value=False)
+    rx_fire = st.sidebar.checkbox("Apply prescribed fire", value=False)
+
+    action = np.array(
+        [
+            thin_pct,
+            fert_strength if fert_toggle else 0.0,
+            fert_strength * 0.6 if fert_toggle else 0.0,
+        ],
+        dtype=np.float32,
+    )
+
+    treatments = {
+        "fertiliser": fert_toggle,
+        "pesticide": pesticide,
+        "prescribed_fire": rx_fire,
+    }
+    return action, treatments
+
+
+def _run_step(action: np.ndarray, treatments: Dict[str, bool], auto: bool = False) -> None:
+    env: StandEnv = st.session_state.env
+    obs, reward, terminated, truncated, info = env.step(action)
+    st.session_state.cumulative_reward += reward
+
+    # Update state history from environment.
+    state = dict(info.get("state", env.state))
+    _encode_state(env, state)
+
+    # Apply user treatments and stochastic disturbances.
+    state = _apply_treatments(env, treatments, st.session_state.disturbance_status)
+    _apply_envelope_decay(st.session_state.disturbance_status, st.session_state.disturbance_settings)
+    state, events = _apply_disturbances(
+        env,
+        st.session_state.disturbance_settings,
+        st.session_state.disturbance_status,
+        st.session_state.rng,
+    )
+
+    st.session_state.history.append(_state_dict_from_env(env))
+    st.session_state.product_history.append(
+        _derive_product_mix(state, st.session_state.acreage)
+    )
+
+    for event in events:
+        event.update({"step": st.session_state.step + 1})
+        st.session_state.events.append(event)
+
+    st.session_state.actions.append(
+        {
+            "step": st.session_state.step + 1,
+            "auto": auto,
+            "action": action.tolist(),
+            "reward": reward,
+        }
+    )
+
+    st.session_state.step += 1
+    st.session_state.done = terminated or truncated
+
+
+# --------------------------------------------------------------------------- App
+
+
+def main() -> None:
+    st.set_page_config(layout="wide", page_title="Stochastic Stand Simulator")
+    st.title("Stochastic Stand Simulator")
+    st.caption("Manual control and policy playback for the StandEnv gymnasium environment.")
+
+    _ensure_session_defaults()
+    initial_state, acreage, horizon, disturbance_settings = _render_initialisation_controls()
+
+    if st.sidebar.button("Initialise stand", type="primary"):
+        _reset_environment(initial_state, acreage, horizon, disturbance_settings)
+        st.experimental_rerun()
+
+    if st.session_state.env is None:
+        st.info("Configure the stand on the left and click *Initialise stand* to begin.")
+        return
+
+    # Allow reconfiguration mid-run.
+    if st.sidebar.button("Reset simulation"):
+        _reset_environment(initial_state, acreage, horizon, disturbance_settings)
+        st.experimental_rerun()
+
+    _select_model(_load_available_models())
+
+    action, treatments = _draw_action_controls()
+
+    col1, col2 = st.columns([1.2, 1])
+    with col1:
+        st.subheader("Simulation controls")
+        c1, c2, c3 = st.columns(3)
+        if c1.button("Step", disabled=st.session_state.done):
+            _run_step(action, treatments, auto=False)
+            st.experimental_rerun()
+
+        auto_disabled = st.session_state.done or st.session_state.ppo_model is None
+        if c2.button("Auto step", disabled=auto_disabled):
+            model = st.session_state.ppo_model
+            if model is None:
+                st.warning("Load a PPO policy to use auto-stepping.")
+            else:
+                predicted_action, _ = model.predict(_encode_state(st.session_state.env, st.session_state.env.state))
+                _run_step(predicted_action, treatments, auto=True)
+                st.experimental_rerun()
+
+        if c3.button("Run 10 steps", disabled=st.session_state.done):
+            for _ in range(10):
+                if st.session_state.done:
+                    break
+                _run_step(action, treatments, auto=False)
+            st.experimental_rerun()
+
+        st.markdown("---")
+        st.metric("Steps completed", st.session_state.step)
+        st.metric("Cumulative reward", f"{st.session_state.cumulative_reward:,.2f}")
+
+        st.markdown("### Stand state trajectory")
+        _plot_state_history(st.session_state.history, st.session_state.events)
+
+        st.markdown("### Product distribution")
+        _plot_product_history(st.session_state.product_history)
+
+    with col2:
+        st.subheader("Current state")
+        state_df = _format_state_table(_state_dict_from_env(st.session_state.env))
+        st.table(state_df)
+
+        st.markdown("### Disturbance log")
+        if st.session_state.events:
+            log_df = pd.DataFrame(st.session_state.events)
+            log_df = log_df.sort_values("step", ascending=False)
+            st.dataframe(log_df, height=260)
         else:
-            st.error("PPO model not loaded")
+            st.info("No disturbances recorded yet.")
 
-    st.subheader("Metrics & Logs")
-    st.metric("Cumulative Revenue", f"${st.session_state.cumulative_revenue:,.2f}")
-
-    if st.session_state.ppo_actions:
-        df = pd.DataFrame(
-            st.session_state.ppo_actions,
-            columns=["Thinning", "Nitrogen", "Phosphorus"]
-        )
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("Download PPO Actions", csv, "ppo_actions.csv")
-
-    for msg in reversed(st.session_state.messages[-30:]):
-        if msg.startswith("success:"):
-            st.success(msg[len("success:"):])
-        elif msg.startswith("warning:"):
-            st.warning(msg[len("warning:"):])
-        elif msg.startswith("error:"):
-            st.error(msg[len("error:"):])
+        st.markdown("### Actions history")
+        if st.session_state.actions:
+            actions_df = pd.DataFrame(st.session_state.actions)
+            st.dataframe(actions_df, height=220)
         else:
-            st.info(msg)
-
-with col2:
-    st.subheader("Forest Stand State Over Time")
-
-    if "plot_mgr" not in st.session_state:
-        st.session_state.plot_mgr = PlotManager(STATE_LABELS)
-
-    mgr = st.session_state.plot_mgr
-    mgr.add(np.array(st.session_state.state).reshape(1, -1))
-
-    fire_steps = [
-        i + 1
-        for i, m in enumerate(st.session_state.messages)
-        if "🔥 Fire" in m
-    ]
-
-    mgr.plot(fire_steps=fire_steps)
+            st.caption("Actions will appear here after you step the environment.")
 
     if st.session_state.done:
-        st.warning("Simulation complete")
-        st.info(f"Final revenue: ${st.session_state.cumulative_revenue:,.2f}")
+        st.warning("Episode finished – reset to start a new run.")
+
+
+if __name__ == "__main__":  # pragma: no cover - entry-point for `streamlit run`.
+    main()
