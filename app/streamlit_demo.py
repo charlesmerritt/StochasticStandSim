@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import io
-from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -16,6 +15,12 @@ try:  # Stable Baselines is optional; the UI gracefully degrades if missing.
 except Exception:  # pragma: no cover - optional dependency for the demo app.
     PPO = None
 
+from core.disturbance.stochastic import (
+    DisturbanceSetting,
+    apply_stochastic_disturbances,
+    initialise_disturbance_status,
+    load_disturbance_catalog,
+)
 from core.stand_env import StandConfig, StandEnv
 
 
@@ -31,32 +36,7 @@ STATE_SERIES = [
 ]
 
 
-@dataclass
-class DisturbanceSetting:
-    """Configuration for a single disturbance type."""
-
-    enabled: bool = True
-    probability: float = 0.05
-    severity_min: float = 0.1
-    severity_max: float = 0.35
-    envelope_boost: float = 0.1
-    envelope_years: int = 5
-    emoji: str = "🔥"
-    label: str = "Fire"
-
-
-DISTURBANCE_TEMPLATES: Dict[str, DisturbanceSetting] = {
-    "fire": DisturbanceSetting(emoji="🔥", label="Fire", probability=0.04, severity_max=0.45),
-    "wind": DisturbanceSetting(emoji="💨", label="Wind", probability=0.03, severity_max=0.3),
-    "insect": DisturbanceSetting(emoji="🪲", label="Insects", probability=0.05, severity_max=0.25),
-}
-
-
-DISTURBANCE_EFFECTS = {
-    "fire": {"biomass": 0.5, "tpa": 0.4, "basal_area": 0.6, "risk": 0.3},
-    "wind": {"biomass": 0.4, "tpa": 0.45, "basal_area": 0.35, "risk": 0.25},
-    "insect": {"biomass": 0.35, "tpa": 0.2, "basal_area": 0.3, "risk": 0.2},
-}
+DISTURBANCE_TEMPLATES: Dict[str, DisturbanceSetting] = load_disturbance_catalog()
 
 
 # ---------------------------------------------------------------------- Helpers
@@ -157,19 +137,16 @@ def _build_disturbance_settings() -> Dict[str, DisturbanceSetting]:
             envelope_years=years,
             emoji=template.emoji,
             label=template.label,
+            effects=dict(template.effects),
+            catastrophic_threshold=template.catastrophic_threshold,
+            risk_increment=template.risk_increment,
+            salvage_recovery_rate=template.salvage_recovery_rate,
         )
     return settings
 
 
 def _initialise_disturbance_status(settings: Dict[str, DisturbanceSetting]) -> Dict[str, Dict[str, float]]:
-    status: Dict[str, Dict[str, float]] = {}
-    for key, cfg in settings.items():
-        status[key] = {
-            "base_prob": cfg.probability,
-            "current_prob": cfg.probability if cfg.enabled else 0.0,
-            "boost_years": 0,
-        }
-    return status
+    return initialise_disturbance_status(settings)
 
 
 def _apply_envelope_decay(status: Dict[str, Dict[str, float]], settings: Dict[str, DisturbanceSetting]) -> None:
@@ -187,39 +164,10 @@ def _apply_disturbances(
     status: Dict[str, Dict[str, float]],
     rng: np.random.Generator,
 ) -> Tuple[Dict[str, float], List[Dict[str, float]]]:
-    events: List[Dict[str, float]] = []
-    current_state = dict(env.state)
-
-    for key, cfg in settings.items():
-        state = status[key]
-        if not cfg.enabled:
-            state["current_prob"] = 0.0
-            continue
-
-        prob = float(np.clip(state.get("current_prob", cfg.probability), 0.0, 1.0))
-        trigger = rng.random() < prob
-        if not trigger:
-            continue
-
-        severity = float(np.clip(rng.uniform(cfg.severity_min, cfg.severity_max), 0.0, 1.0))
-        effects = DISTURBANCE_EFFECTS.get(key, {})
-        for attr, weight in effects.items():
-            if attr not in current_state:
-                continue
-            current_state[attr] = max(0.0, current_state[attr] * (1.0 - severity * weight))
-
-        current_state["risk"] = float(np.clip(current_state.get("risk", 0.0) + severity * 0.2, 0.0, 1.0))
-        state["boost_years"] = cfg.envelope_years
-        state["current_prob"] = float(np.clip(prob + cfg.envelope_boost, 0.0, 1.0))
-
-        events.append(
-            {
-                "type": key,
-                "label": cfg.label,
-                "severity": severity,
-                "emoji": cfg.emoji,
-            }
-        )
+    result = apply_stochastic_disturbances(env.state, rng, status, settings)
+    current_state = result.get("state", env.state)
+    info = result.get("info", {})
+    events = info.get("events", [])
 
     _encode_state(env, current_state)
     return current_state, events
