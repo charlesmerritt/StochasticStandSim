@@ -1,23 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Callable, Dict, Iterable, Mapping, Optional, Protocol, Tuple
+import math
+from dataclasses import dataclass
+from typing import Dict, Mapping, Optional, Protocol
 
-
-# --- Public enums -------------------------------------------------------------
-
-class Region(Enum):
-    LOWER_COASTAL_PLAIN = auto()
-    UPPER_COASTAL_PLAIN = auto()
-    PIEDMONT = auto()
-
-
-class ProductClass(Enum):
-    # Define by DBH threshold d (in) and top diameter t (in), outside bark.
-    PULPWOOD = auto()
-    CHIP_N_SAW = auto()
-    SAWTIMBER = auto()
+from .types import ProductClass, Region
+from . import pmrc_coeffs as coeffs
 
 
 # --- Data containers ----------------------------------------------------------
@@ -81,6 +69,7 @@ class PMRCEqns(Protocol):
     def height_given_dbh(self, hd: float, dq: float, dbh: float, region: Region) -> float: ...
 
     # Thinning helpers
+    def competition_index(self, ba_thinned: float, ba_unthinned: float, region: Region) -> float: ...
     def estimate_ba_removed(self, ba_before: float, tpa_before: float,
                             tpa_removed_row: float, tpa_removed_select: float) -> float: ...
     def project_thin_response_ba(self, ba_unthin2: float, ci1: float,
@@ -171,6 +160,14 @@ class PMRCGrowth:
         region = s.region or self.default_region
         return self.eqns.height_given_dbh(hd=s.hd, dq=dq, dbh=dbh, region=region)
 
+    def competition_index(self, ba_thinned: float, ba_unthinned: float,
+                           region: Optional[Region] = None) -> float:
+        return self.eqns.competition_index(
+            ba_thinned=ba_thinned,
+            ba_unthinned=ba_unthinned,
+            region=region or self.default_region,
+        )
+
     # --- Thinning helpers -----------------------------------------------------
     def estimate_ba_removed(self, ba_before: float, tpa_before: float,
                             tpa_removed_row: float, tpa_removed_select: float) -> float:
@@ -197,111 +194,276 @@ class PMRCGrowth:
 
 @dataclass
 class PMRC1996(PMRCEqns):
-    """Adapter for PMRC Technical Report 1996-1. Implements formulas and uses
-    region-specific coefficients from the report."""
-
-    # Coefficient stores by region and model
-    coeffs: Dict[str, Dict[Region, Tuple[float, ...]]] = field(default_factory=dict)
+    """Implementation of the PMRC Technical Report 1996-1 models."""
 
     # ---- Height/site ----
     def project_hd(self, age1: float, hd1: float, age2: float, si25: float) -> float:
-        # TODO: implement Chapman–Richards HD projection used in TR1996-1, eq (12).
-        raise NotImplementedError("Implement project_hd per TR1996-1 eq. (12).")
+        """Project dominant height using the Chapman–Richards formulation."""
+
+        alpha = coeffs.HEIGHT_SITE_PARAMETERS["alpha"]
+        m = coeffs.HEIGHT_SITE_PARAMETERS["m"]
+
+        def _g(age: float) -> float:
+            return 1.0 - math.exp(-alpha * age)
+
+        if age2 <= age1:
+            return hd1
+        ratio = _g(age2) / _g(age1)
+        return hd1 * ratio ** m
 
     def site_index_from_hd(self, age: float, hd: float) -> float:
-        # TODO: implement eq. (13) site-index formulation for soil group A.
-        raise NotImplementedError("Implement site_index_from_hd per TR1996-1 eq. (13).")
+        alpha = coeffs.HEIGHT_SITE_PARAMETERS["alpha"]
+        m = coeffs.HEIGHT_SITE_PARAMETERS["m"]
+        base = coeffs.HEIGHT_SITE_PARAMETERS["ratio_base"]
+
+        g_age = 1.0 - math.exp(-alpha * age)
+        return hd * (base / g_age) ** m
 
     def hd_from_site_index(self, age: float, si25: float) -> float:
-        # TODO: implement eq. (14) to get HD at age from SI25.
-        raise NotImplementedError("Implement hd_from_site_index per TR1996-1 eq. (14).")
+        alpha = coeffs.HEIGHT_SITE_PARAMETERS["alpha"]
+        m = coeffs.HEIGHT_SITE_PARAMETERS["m"]
+        base = coeffs.HEIGHT_SITE_PARAMETERS["ratio_base"]
 
+        g_age = 1.0 - math.exp(-alpha * age)
+        return si25 * (base / g_age) ** (-m)
 
     # ---- Survival ----
     def project_tpa(self, age1: float, tpa1: float, age2: float, si25: float) -> float:
-        # TODO: implement survival with asymptote 100 TPA, TR1996-1 eq. (15). If TPA<100, TPA_2 = TPA_1.
-        raise NotImplementedError("Implement project_tpa per TR1996-1 eq. (15).")
+        params = coeffs.TPA_PARAMETERS
+        asym = params["asymptote"]
+
+        if age2 <= age1:
+            return tpa1
+        if tpa1 <= asym:
+            return tpa1
+
+        b = params["b"]
+        c = params["c"]
+        d = params["d"]
+
+        term = (tpa1 - asym) ** (-b) + (c ** 2) * si25 * (age2 ** d - age1 ** d)
+        return asym + term ** (-1.0 / b)
 
     # ---- Basal area ----
     def predict_ba(self, age: float, tpa: float, hd: float, region: Region,
                    percent_hardwood_ba: Optional[float] = None) -> float:
-        # TODO: implement BA prediction eq. (16)
-        raise NotImplementedError("Implement predict_ba per TR1996-1 eq. (16).")
+        if age <= 0 or tpa <= 0 or hd <= 0:
+            raise ValueError("Age, TPA and HD must be positive for BA prediction")
+
+        region_key = region
+        if region == Region.PIEDMONT and percent_hardwood_ba is None:
+            percent_hardwood_ba = 0.0
+
+        if region == Region.PIEDMONT:
+            coeff = coeffs.BA_PREDICT[Region.PIEDMONT]
+        else:
+            coeff = coeffs.BA_PREDICT[region_key]
+
+        ln_tpa = math.log(tpa)
+        ln_hd = math.log(hd)
+        inv_age = coeff.inv_age / age
+        ln_tpa_over_age = ln_tpa / age
+        ln_hd_over_age = ln_hd / age
+
+        ln_ba = (
+            coeff.intercept
+            + inv_age
+            + coeff.ln_tpa * ln_tpa
+            + coeff.ln_hd * ln_hd
+            + coeff.ln_tpa_over_age * ln_tpa_over_age
+            + coeff.ln_hd_over_age * ln_hd_over_age
+        )
+
+        if region == Region.PIEDMONT and percent_hardwood_ba is not None:
+            ln_ba += coeffs.HARDWOOD_ADJUSTMENT["coeff"] * percent_hardwood_ba
+
+        return math.exp(ln_ba)
 
     def project_ba(self, age1: float, ba1: float, tpa1: float, hd1: float,
                    age2: float, tpa2: float, hd2: float, region: Region,
                    percent_hardwood_ba: Optional[float] = None) -> float:
-        # TODO: implement BA projection eq. (17).
-        raise NotImplementedError("Implement project_ba per TR1996-1 eq. (17).")
+        if age2 <= age1:
+            return ba1
 
-    def hardwood_adjustment(self, ba: float, percent_hardwood_ba: float) -> float:
-        # TODO: implement hardwood BA adjustment eq. (18).
-        raise NotImplementedError("Implement hardwood_adjustment per TR1996-1 eq. (18).")
+        if ba1 <= 0 or tpa1 <= 0 or hd1 <= 0 or tpa2 <= 0 or hd2 <= 0:
+            raise ValueError("Inputs must be positive for BA projection")
+
+        region_key = region if region != Region.PIEDMONT else Region.UPPER_COASTAL_PLAIN
+        coeff = coeffs.BA_PROJECT[region_key]
+
+        ln_ba1 = math.log(ba1)
+        ln_tpa1 = math.log(tpa1)
+        ln_hd1 = math.log(hd1)
+        ln_tpa2 = math.log(tpa2)
+        ln_hd2 = math.log(hd2)
+
+        ln_ba2 = (
+            ln_ba1
+            + coeff.inv_age * ((1.0 / age2) - (1.0 / age1))
+            + coeff.ln_tpa * (ln_tpa2 - ln_tpa1)
+            + coeff.ln_hd * (ln_hd2 - ln_hd1)
+            + coeff.ln_tpa_over_age * ((ln_tpa2 / age2) - (ln_tpa1 / age1))
+            + coeff.ln_hd_over_age * ((ln_hd2 / age2) - (ln_hd1 / age1))
+        )
+
+        ba2 = math.exp(ln_ba2)
+
+        if region == Region.PIEDMONT and percent_hardwood_ba is not None:
+            adjustment = coeffs.HARDWOOD_ADJUSTMENT["coeff"] * percent_hardwood_ba
+            return ba2 * math.exp(adjustment)
+        return ba2
 
     # ---- Yield ----
     def predict_yield(self, age: float, tpa: float, hd: float, ba: float, region: Region,
                       unit: str) -> float:
-        if region == Region.PIEDMONT or region == Region.UCP:
-            return self.predict_yield_piedmont_ucp(age, tpa, hd, ba, unit)
-        elif region == Region.LCP:
-            return self.predict_yield_lcp(age, tpa, hd, ba, unit)
+        if age <= 0 or tpa <= 0 or hd <= 0 or ba <= 0:
+            raise ValueError("Inputs must be positive for yield prediction")
 
-    def predict_yield_piedmont_ucp(self, age: float, tpa: float, hd: float, ba: float, unit: str) -> float:
-        # TODO: implement per acre yield prediction, eq. (19) for Piedmont+UCP.
-        raise NotImplementedError("Implement predict_yield_piedmont_ucp per TR1996-1 eq. (19).")
+        key = (region, unit.upper())
+        if key not in coeffs.YIELD_COEFFICIENTS:
+            raise KeyError(f"Unsupported yield unit {unit} for region {region}")
 
-    def predict_yield_lcp(self, age: float, tpa: float, hd: float, ba: float, unit: str) -> float:
-        # TODO: implement per acre yield prediction, eq. (20) for LCP.
-        raise NotImplementedError("Implement predict_yield_lcp per TR1996-1 eq. (20).")
+        intercept, b_hd, b_ba, b_tpa_over_age, b_hd_over_age, b_ba_over_age, b_tpa = coeffs.YIELD_COEFFICIENTS[key]
+
+        ln_tpa = math.log(tpa)
+        ln_hd = math.log(hd)
+        ln_ba = math.log(ba)
+
+        value = (
+            intercept
+            + b_hd * ln_hd
+            + b_ba * ln_ba
+            + b_tpa_over_age * (ln_tpa / age)
+            + b_hd_over_age * (ln_hd / age)
+            + b_ba_over_age * (ln_ba / age)
+            + b_tpa * ln_tpa
+        )
+        return math.exp(value)
 
     # ---- Product breakdown ----
     def merchantable_fraction(self, total_yield: float, d_dbh_min: float, t_top: float,
                               tpa: float, hd: float, ba: float, region: Region,
                               unit: str) -> float:
-        # TODO: implement yield allocation eq. (21) with region- and unit-specific b1..b5.
-        raise NotImplementedError("Implement merchantable_fraction per TR1996-1 eq. (21).")
+        if total_yield <= 0:
+            return 0.0
+        if tpa <= 0 or ba <= 0:
+            raise ValueError("TPA and BA must be positive for merchandising")
+
+        key = (region, unit.upper())
+        if key not in coeffs.MERCHANTABLE_COEFFICIENTS:
+            raise KeyError(f"Unsupported merchandising unit {unit} for region {region}")
+
+        b1, b2, b3, b4, b5 = coeffs.MERCHANTABLE_COEFFICIENTS[key]
+
+        qmd = math.sqrt((ba / tpa) / 0.005454154)
+        if qmd <= 0:
+            raise ValueError("Computed QMD must be positive")
+
+        ratio_top = t_top / qmd
+        ratio_dbh = d_dbh_min / qmd
+
+        fraction = math.exp(b1 * ratio_top ** b5 + b2 * (tpa ** b3) * (ratio_dbh ** b4))
+        return total_yield * fraction
 
     # ---- Percentiles / diameter distribution ----
     def diameter_percentiles(self, ba: float, tpa: float, region: Region,
                              percent_hardwood_ba: Optional[float] = None
                              ) -> Mapping[int, float]:
-        # TODO: implement percentile model eq. (22)
-        raise NotImplementedError("Implement diameter_percentiles per TR1996-1 eq. (22).")
+        if ba <= 0 or tpa <= 0:
+            raise ValueError("BA and TPA must be positive for diameter percentiles")
+
+        qmd = math.sqrt((ba / tpa) / 0.005454154)
+        ln_qmd = math.log(qmd)
+        ln_tpa = math.log(tpa)
+        ln_ba = math.log(ba)
+        phwd = percent_hardwood_ba or 0.0
+
+        result: Dict[int, float] = {}
+        for percentile in coeffs.DIAMETER_PERCENTILE_COEFFICIENTS[region]:
+            a, b_qmd, c_tpa, d_ba, e_hw = coeffs.percentile_coeffs(region, percentile)
+            ln_dp = a + b_qmd * ln_qmd + c_tpa * ln_tpa + d_ba * ln_ba + e_hw * phwd
+            result[percentile] = math.exp(ln_dp)
+        return result
 
     # ---- Relative size projection ----
     def project_relative_size(self, b_avg1: float, b_i1: float,
                               age1: float, age2: float, region: Region) -> float:
-        # TODO: implement relative size projection eq. (23).
-        raise NotImplementedError("Implement project_relative_size per TR1996-1 eq. (23).")
+        decay = coeffs.RELATIVE_SIZE_DECAY[region]
+        if age2 <= age1:
+            return b_i1
+        delta = age2 - age1
+        return b_avg1 + (b_i1 - b_avg1) * math.exp(-decay * delta)
 
     # ---- Height|DBH curve ----
     def height_given_dbh(self, hd: float, dq: float, dbh: float, region: Region) -> float:
-        # TODO: implement height|DBH eq. (24) with region-specific parameters.
-        raise NotImplementedError("Implement height_given_dbh per TR1996-1 eq. (24).")
+        if hd <= 0 or dq <= 0 or dbh <= 0:
+            raise ValueError("HD, DQ and DBH must be positive for height estimation")
+
+        intercept, b_hd, b_dq, b_dbh, b_ratio_dq, b_ratio_hd = coeffs.HEIGHT_DBH_COEFFICIENTS[region]
+
+        ln_hd = math.log(hd)
+        ln_dq = math.log(dq)
+        ln_dbh = math.log(dbh)
+        ln_ratio_dq = math.log(dbh / dq)
+        ln_ratio_hd = math.log(dbh / hd)
+
+        ln_height = (
+            intercept
+            + b_hd * ln_hd
+            + b_dq * ln_dq
+            + b_dbh * ln_dbh
+            + b_ratio_dq * ln_ratio_dq
+            + b_ratio_hd * ln_ratio_hd
+        )
+        return math.exp(ln_height)
 
     # ---- Thinning ----
-    def competition_index(self, ba: float, tpa: float, region: Region) -> float:
-        # TODO: implement competition index eq. (26).
-        raise NotImplementedError("Implement competition_index per TR1996-1 eq. (26).")
+    def competition_index(self, ba_thinned: float, ba_unthinned: float, region: Region) -> float:
+        if ba_unthinned <= 0:
+            raise ValueError("Unthinned basal area must be positive")
+        if ba_thinned < 0:
+            raise ValueError("Thinned basal area must be non-negative")
+        return 1.0 - (ba_thinned / ba_unthinned)
 
     def estimate_ba_removed(self, ba_before: float, tpa_before: float,
                             tpa_removed_row: float, tpa_removed_select: float) -> float:
-        # TODO: implement thinned BA estimator eq. (25).
-        raise NotImplementedError("Implement estimate_ba_removed per TR1996-1 eq. (25).")
+        if ba_before < 0 or tpa_before <= 0:
+            raise ValueError("Basal area must be non-negative and TPA positive")
+
+        remaining = max(tpa_before - tpa_removed_row, 1e-9)
+        row_fraction = tpa_removed_row / tpa_before
+        select_fraction = 0.0
+        if tpa_removed_select > 0:
+            select_fraction = (tpa_removed_select / remaining) ** 1.2345
+
+        total_fraction = row_fraction + (1.0 - row_fraction) * select_fraction
+        return ba_before * total_fraction
 
     def project_thin_response_ba(self, ba_unthin2: float, ci1: float,
                                  age1: float, age2: float, region: Region) -> float:
-        # TODO: implement CI projection eq. (27) and apply eq. (28).
-        raise NotImplementedError("Implement project_thin_response_ba per TR1996-1 eqs. (27),(28).")
+        if age2 <= age1:
+            return ba_unthin2 * (1 - ci1)
+
+        decay = coeffs.RELATIVE_SIZE_DECAY[region]
+        ci2 = ci1 * math.exp(-decay * (age2 - age1))
+        return ba_unthin2 * (1.0 - ci2)
 
     # ---- Fertilization response ----
     def fert_response_hd(self, years_since_treat: float, n_lbs_ac: float, with_p: bool) -> float:
-        # TODO: implement fertilizer response for HD eq. (29).
-        raise NotImplementedError("Implement fert_response_hd per TR1996-1 eq. (29).")
+        if years_since_treat < 0:
+            raise ValueError("Years since treatment must be non-negative")
+        n = coeffs.FERT_HEIGHT["N"] * n_lbs_ac
+        p = coeffs.FERT_HEIGHT["P"] if with_p else 0.0
+        k = coeffs.FERT_HEIGHT["k"]
+        return (n + p) * years_since_treat * math.exp(-k * years_since_treat)
 
     def fert_response_ba(self, years_since_treat: float, n_lbs_ac: float, with_p: bool) -> float:
-        # TODO: implement fertilizer response for BA eq. (30).
-        raise NotImplementedError("Implement fert_response_ba per TR1996-1 eq. (30).")
+        if years_since_treat < 0:
+            raise ValueError("Years since treatment must be non-negative")
+        n = coeffs.FERT_BA["N"] * n_lbs_ac
+        p = coeffs.FERT_BA["P"] if with_p else 0.0
+        k = coeffs.FERT_BA["k"]
+        return (n + p) * years_since_treat * math.exp(-k * years_since_treat)
 
 
 # --- Simple registry so other modules can resolve the growth engine -----------
