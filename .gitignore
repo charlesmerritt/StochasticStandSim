@@ -4,5 +4,6 @@ venv/
 wandb/
 logs/
 pmrc/
-data/
+data/*
+!data/example_stands.csv
 models/
