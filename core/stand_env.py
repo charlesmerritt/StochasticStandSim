@@ -11,6 +11,11 @@ from gymnasium import spaces
 # Implement their functions separately with matching signatures.
 from core.growth.growth_models import grow_one_step  # (state, action, params) -> dict
 from core.disturbance.envelopes import apply_deterministic_risk  # (state, risk_cfg) -> dict
+from core.disturbance.stochastic import (
+    apply_stochastic_disturbances,
+    initialise_disturbance_status,
+    resolve_disturbance_settings,
+)
 from core.economics.reward_functions import step_reward  # (state, action, next_state, econ_cfg) -> float
 from core.economics.valuation import bellman_value  # (state, horizon, discount, econ_cfg) -> float
 
@@ -78,6 +83,8 @@ class StandEnv(gym.Env):
         self._terminated: bool = False
         self._truncated: bool = False
         self._last_thin_age: float = -np.inf
+        self._stochastic_settings = resolve_disturbance_settings(self.config.disturbance_config)
+        self._stochastic_status = initialise_disturbance_status(self._stochastic_settings)
 
         if seed is not None:
             # Align with Gymnasium's seeding semantics by performing a reset.
@@ -209,6 +216,10 @@ class StandEnv(gym.Env):
         self._state = self._initial_state()
         self._maybe_call_reset_helpers(self._state)
 
+        # Disturbance status may be mutated by the reset helper, so resolve after.
+        self._stochastic_settings = resolve_disturbance_settings(self.config.disturbance_config)
+        self._stochastic_status = initialise_disturbance_status(self._stochastic_settings)
+
         self._step_count = 0
         self._terminated = False
         self._truncated = False
@@ -253,6 +264,19 @@ class StandEnv(gym.Env):
             next_state = risk_out
             risk_info = {}
 
+        stochastic_out = apply_stochastic_disturbances(
+            next_state,
+            self._rng,
+            self._stochastic_status,
+            self._stochastic_settings,
+            self.config.disturbance_config,
+        )
+        if isinstance(stochastic_out, Mapping):
+            next_state = stochastic_out.get("state", next_state)
+            stochastic_info = stochastic_out.get("info", {})
+        else:
+            next_state, stochastic_info = next_state, {}
+
         reward = step_reward(self._state, adjusted_action, next_state, self.config.economic_config)
 
         self._state = dict(next_state)
@@ -272,6 +296,7 @@ class StandEnv(gym.Env):
         info: Dict[str, Any] = {
             "growth": growth_info,
             "disturbance": risk_info,
+            "stochastic_disturbance": stochastic_info,
             "constraints": constraint_info,
             "state": dict(self._state),
             "adjusted_action": adjusted_action,

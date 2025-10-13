@@ -5,27 +5,56 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, MutableMapping
 
 import numpy as np
+import pandas as pd
+from pathlib import Path
 
 __all__ = ["step_reward"]
 
 
-_REGIONAL_PRICES = {
-    "southeast": {
-        "biomass": 17.5,  # $/green ton
-        "salvage_discount": 0.55,
-        "thin_cost": 6.0,
-    },
-    "piedmont": {
-        "biomass": 18.5,
-        "salvage_discount": 0.6,
-        "thin_cost": 6.5,
-    },
-    "coastal": {
-        "biomass": 16.5,
-        "salvage_discount": 0.5,
-        "thin_cost": 5.5,
-    },
-}
+# Configuration-backed defaults ---------------------------------------------
+
+try:
+    PRICES = pd.read_csv("config/prices.csv")
+except FileNotFoundError:  # pragma: no cover - fallback for alternative cwd
+    PRICES = pd.read_csv(Path(__file__).resolve().parents[2] / "config" / "prices.csv")
+
+
+def _build_regional_price_table(table: pd.DataFrame) -> Dict[str, Dict[str, float]]:
+    regions: Dict[str, Dict[str, float]] = {}
+    if "region" not in table.columns:
+        return regions
+
+    for record in table.to_dict(orient="records"):
+        region = str(record.get("region", "")).strip().lower()
+        if not region:
+            continue
+        regions[region] = {
+            "biomass": float(record.get("biomass", np.nan)),
+            "salvage_discount": float(record.get("salvage_discount", np.nan)),
+            "thin_cost": float(record.get("thin_cost", np.nan)),
+        }
+    return regions
+
+
+_REGIONAL_PRICES = _build_regional_price_table(PRICES)
+if not _REGIONAL_PRICES:  # pragma: no cover - defensive default
+    _REGIONAL_PRICES = {
+        "southeast": {
+            "biomass": 17.5,
+            "salvage_discount": 0.55,
+            "thin_cost": 6.0,
+        },
+        "piedmont": {
+            "biomass": 18.5,
+            "salvage_discount": 0.6,
+            "thin_cost": 6.5,
+        },
+        "coastal": {
+            "biomass": 16.5,
+            "salvage_discount": 0.5,
+            "thin_cost": 5.5,
+        },
+    }
 
 
 def _site_premium(site_index: float, baseline: float, slope: float) -> float:
