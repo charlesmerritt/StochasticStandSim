@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: stochastic-stand-sim
+Version: 0.6.0
+Summary: Episodic stand simulator with growth, disturbances, and economics
+Author: Chaz Merritt
+Requires-Python: >=3.10
+Requires-Dist: numpy>=1.24
+Requires-Dist: gymnasium>=0.29
+Requires-Dist: pydantic>=2.6
+Requires-Dist: typing-extensions>=4.10
+Requires-Dist: scipy>=1.11
+Requires-Dist: streamlit>=1.36

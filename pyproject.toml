@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "stochastic-stand-sim"
+version = "0.6.0"
+description = "Episodic stand simulator with growth, disturbances, and economics"
+authors = [{name = "Chaz Merritt"}]
+requires-python = ">=3.10"
+dependencies = [
+"numpy>=1.24",
+"gymnasium>=0.29",
+"pydantic>=2.6",
+"typing-extensions>=4.10",
+"scipy>=1.11",
+"streamlit>=1.36",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["StochasticStandSim*"]
