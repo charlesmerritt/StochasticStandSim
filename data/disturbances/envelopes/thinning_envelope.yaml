@@ -1,0 +1,152 @@
+# ADSR-style release curves for residual crop trees following thinning operations.
+# Multipliers are relative to the no-thin baseline growth for the same stand.
+# Patterns synthesized from PMRC release studies and regional loblolly thinning trials
+# (Amateis & Burkhart 1989).
+#
+# IMPORTANT: Thinning typically ENHANCES individual tree growth by reducing competition.
+# Positive values indicate growth enhancement (e.g., 0.10 = 10% growth increase).
+# The envelope captures the release effect: immediate boost followed by gradual return to baseline.
+# Heavier thinning = stronger and longer-lasting release effect.
+# These values are ADDITIVE multipliers applied to BA growth increments.
+
+metadata:
+  disturbance: thinning
+  scope: survivors_only
+  output: BA_multiplier
+  effect_direction: positive  # Thinning enhances growth through competition reduction
+
+defaults:
+  floor: 0.90        # allow for short-lived stagnation if crown damage occurs
+  ceiling: 1.35      # cap strong release responses
+
+
+sev_classes:
+  mild_0_10:
+    desc: Very light thinning (5-10% BA removal) - minimal release effect
+    attack:
+      basal_area: [0.00, 0.02]  # 0-2% growth boost
+      volume:     [0.00, 0.02]
+      height:     [0.00, 0.01]   # Height growth minimally affected
+      density:    [0.00, 0.03]
+    decay:
+      basal_area: [0.00, 0.01]
+      volume:     [0.00, 0.01]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.01]
+    sustain:
+      basal_area: [0.00, 0.00]   # Returns to baseline quickly
+      volume:     [0.00, 0.00]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.00]
+    release:
+      basal_area: [0.00, 0.00]
+      volume:     [0.00, 0.00]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.00]
+    duration: 4
+  low_10_20:
+    desc: Light thinning (10-20% BA removal) - modest release
+    attack:
+      basal_area: [0.02, 0.05]  # 2-5% growth increase
+      volume:     [0.02, 0.06]
+      height:     [0.00, 0.01]
+      density:    [0.03, 0.08]
+    decay:
+      basal_area: [0.01, 0.03]
+      volume:     [0.01, 0.04]
+      height:     [0.00, 0.00]
+      density:    [0.01, 0.05]
+    sustain:
+      basal_area: [0.00, 0.01]
+      volume:     [0.00, 0.01]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.02]
+    release:
+      basal_area: [0.00, 0.00]
+      volume:     [0.00, 0.00]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.00]
+    duration: 6
+  moderate_20_50:
+    desc: Moderate thinning (20-35% BA removal) - strong release
+    attack:
+      basal_area: [0.06, 0.12]  # 6-12% growth increase
+      volume:     [0.08, 0.15]
+      height:     [0.00, 0.02]
+      density:    [0.10, 0.18]
+    decay:
+      basal_area: [0.04, 0.08]
+      volume:     [0.05, 0.10]
+      height:     [0.00, 0.01]
+      density:    [0.06, 0.12]
+    sustain:
+      basal_area: [0.01, 0.04]
+      volume:     [0.01, 0.05]
+      height:     [0.00, 0.00]
+      density:    [0.02, 0.06]
+    release:
+      basal_area: [0.00, 0.00]
+      volume:     [0.00, 0.00]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.00]
+    duration: 8
+  severe_50_80:
+    desc: Heavy thinning (35-50% BA removal) - maximum release
+    attack:
+      basal_area: [0.12, 0.20]  # 12-20% growth increase
+      volume:     [0.15, 0.25]
+      height:     [0.00, 0.04]
+      density:    [0.18, 0.30]
+    decay:
+      basal_area: [0.08, 0.15]
+      volume:     [0.10, 0.18]
+      height:     [0.00, 0.02]
+      density:    [0.12, 0.22]
+    sustain:
+      basal_area: [0.03, 0.08]
+      volume:     [0.04, 0.10]
+      height:     [0.00, 0.01]
+      density:    [0.05, 0.12]
+    release:
+      basal_area: [0.00, 0.00]
+      volume:     [0.00, 0.00]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.00]
+    duration: 10
+  catastrophic_80_100:
+    desc: Very heavy thinning (50-70% BA removal) - extreme release but may risk windthrow
+    attack:
+      basal_area: [0.18, 0.28]  # 18-28% growth increase
+      volume:     [0.22, 0.35]
+      height:     [0.02, 0.06]
+      density:    [0.25, 0.40]
+    decay:
+      basal_area: [0.12, 0.22]
+      volume:     [0.15, 0.28]
+      height:     [0.01, 0.04]
+      density:    [0.18, 0.32]
+    sustain:
+      basal_area: [0.05, 0.12]
+      volume:     [0.06, 0.15]
+      height:     [0.00, 0.02]
+      density:    [0.08, 0.18]
+    release:
+      basal_area: [0.00, 0.00]
+      volume:     [0.00, 0.00]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.00]
+    duration: 12
+
+modulators:
+  none:
+    multiplier_range: [1.0, 1.0]
+
+
+application:
+  algorithm:
+    - determine thinning_intensity class from residual BA or prescribed option
+    - sample ADSR parameters within ranges
+    - apply modulators (type, season, residual BA ratio)
+    - construct yearly MAI multipliers
+    - clamp to [floor, ceiling]
+    - stop at cap after year

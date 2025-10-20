@@ -1,0 +1,133 @@
+# ADSR-style multi-year growth effects for survivors.
+# Envelope parameters are given as multipliers relative to no-fire growth.
+# Patterns derived from scorch–growth studies and Rx-fire syntheses.
+# Cain 1985; Waldrop & Van Lear 1984; Reilly et al. 2016; Varner et al. 2021 review.
+# Cain 1985: first-year growth reductions scale with scorch; young stands sensitive.
+# Waldrop & Van Lear 1984: growth declines with scorch, often diminishing by year 3–4 at moderate scorch. 
+# Reilly 2016: repeated growing-season burns had little effect on BA of trees under 11.7 cm DBH. 
+# Varner 2021: crown injury mechanisms synthesize scorch–mortality/growth linkages.
+
+metadata:
+  disturbance: fire
+  scope: survivors_only
+  output: BA_multiplier
+  effect_direction: negative
+
+defaults:
+  floor: 0.60     
+  ceiling: 1.10    # allow slight compensatory growth after recovery in thinned canopies
+
+sev_classes:
+  mild_0_10:
+    desc: 0–10% stems with measurable crown injury
+    attack:
+      basal_area: [0.00, 0.03]
+      volume:     [0.00, 0.03]
+      height:     [0.00, 0.01]
+    decay:
+      basal_area: [0.00, 0.02]
+      volume:     [0.00, 0.02]
+      height:     [0.00, 0.01]
+    sustain:
+      basal_area: [0.00, 0.01]
+      volume:     [0.00, 0.01]
+      height:     [0.00, 0.00]
+    release:
+      basal_area: [0.00, 0.01]
+      volume:     [0.00, 0.01]
+      height:     [0.00, 0.00]
+    duration: 2
+
+  low_10_20:
+    desc: 10–20% stems injured; light scorch common
+    attack:
+      basal_area: [0.03, 0.08]
+      volume:     [0.03, 0.09]
+      height:     [0.00, 0.03]
+    decay:
+      basal_area: [0.02, 0.05]
+      volume:     [0.02, 0.06]
+      height:     [0.00, 0.02]
+    sustain:
+      basal_area: [0.00, 0.02]
+      volume:     [0.00, 0.03]
+      height:     [0.00, 0.01]
+    release:
+      basal_area: [0.00, 0.01]
+      volume:     [0.00, 0.01]
+      height:     [0.00, 0.00]
+    duration: 4
+
+  moderate_20_50:
+    desc: 20–50% stems injured; moderate scorch
+    attack:
+      basal_area: [0.08, 0.16]
+      volume:     [0.10, 0.20]
+      height:     [0.02, 0.06]
+    decay:
+      basal_area: [0.05, 0.10]
+      volume:     [0.06, 0.12]
+      height:     [0.01, 0.04]
+    sustain:
+      basal_area: [0.02, 0.05]
+      volume:     [0.03, 0.07]
+      height:     [0.00, 0.02]
+    release:
+      basal_area: [0.00, 0.02]
+      volume:     [0.00, 0.03]
+      height:     [0.00, 0.01]
+    duration: 6
+
+  severe_50_80:
+    desc: 50–80% stems injured; heavy scorch; some cambial damage
+    attack:
+      basal_area: [0.16, 0.30]
+      volume:     [0.20, 0.36]
+      height:     [0.04, 0.12]
+    decay:
+      basal_area: [0.10, 0.20]
+      volume:     [0.12, 0.24]
+      height:     [0.02, 0.06]
+    sustain:
+      basal_area: [0.05, 0.10]
+      volume:     [0.06, 0.12]
+      height:     [0.01, 0.03]
+    release:
+      basal_area: [0.01, 0.03]
+      volume:     [0.01, 0.04]
+      height:     [0.00, 0.02]
+    duration: 9
+
+  catastrophic_80_100:
+    desc: 80–100% stems injured; complete scorch on survivors
+    attack:
+      basal_area: [0.30, 0.45]
+      volume:     [0.36, 0.55]
+      height:     [0.08, 0.18]
+    decay:
+      basal_area: [0.20, 0.35]
+      volume:     [0.24, 0.42]
+      height:     [0.04, 0.10]
+    sustain:
+      basal_area: [0.10, 0.20]
+      volume:     [0.12, 0.24]
+      height:     [0.02, 0.06]
+    release:
+      basal_area: [0.02, 0.06]
+      volume:     [0.03, 0.08]
+      height:     [0.01, 0.03]
+    duration: 12
+
+modulators:
+  young_stand:
+    threshold_height_ft: 40         # below this, trees are more vulnerable
+    multiplier_range: [1.0, 1.6]    # scales attack_drop and decay_years up to +60%
+
+
+application:
+  - sample scorch_fraction -> bin
+  - sample mortality p → update TPA, BA instantly
+  - compute yearly m_t from ADSR with season and age/DBH modulators
+  - apply: delta BA_t := m_t * delta BA_t_PMRC
+  - clamp to [floor, ceiling]
+  - stop at cap_after_year or when |m_t-1| < e
