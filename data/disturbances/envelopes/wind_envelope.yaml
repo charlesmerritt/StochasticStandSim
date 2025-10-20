@@ -1,0 +1,149 @@
+# Fortuin et al. 2023 (Hurricane Michael); Stanturf et al. 2007; Harrington et al. 2000;
+# Sharma et al. 2020; Dickens & Moorhead 2018.
+
+metadata:
+  disturbance: wind
+  scope: survivors_only
+  output: BA_multiplier  # per-year delt BA multiplier
+  effect_direction: negative
+
+defaults:
+  floor: 0.55
+  ceiling: 1.00
+
+sev_classes:
+  mild_0_10:
+    desc: 0 to 10 percent stem damage - mild growth reduction
+    attack:
+      basal_area: [0.00, 0.06]  # min-max multiplier reduction on BA growth increment
+      volume:     [0.00, 0.06]
+      height:     [0.00, 0.04]
+      density:    [0.00, 0.10]
+    decay:
+      basal_area: [0.00, 0.04]
+      volume:     [0.00, 0.04]
+      height:     [0.00, 0.02]
+      density:    [0.00, 0.06]
+    sustain:
+      basal_area: [0.00, 0.02]
+      volume:     [0.00, 0.02]
+      height:     [0.00, 0.01]
+      density:    [0.00, 0.03]
+    release:
+      basal_area: [0.00, 0.00]
+      volume:     [0.00, 0.00]
+      height:     [0.00, 0.00]
+      density:    [0.00, 0.00]
+    duration: 6
+  low_10_20:
+    desc: 10 to 20 percent stem damage - low growth reduction
+    attack:
+      basal_area: [0.06, 0.14]
+      volume:     [0.06, 0.16]
+      height:     [0.02, 0.08]
+      density:    [0.10, 0.22]
+    decay:
+      basal_area: [0.04, 0.10]
+      volume:     [0.04, 0.11]
+      height:     [0.01, 0.06]
+      density:    [0.06, 0.14]
+    sustain:
+      basal_area: [0.02, 0.05]
+      volume:     [0.02, 0.06]
+      height:     [0.00, 0.03]
+      density:    [0.03, 0.08]
+    release:
+      basal_area: [0.00, 0.02]
+      volume:     [0.00, 0.02]
+      height:     [0.00, 0.01]
+      density:    [0.00, 0.03]
+    duration: 8
+  moderate_20_50:
+    desc: 20 to 50 percent stems damaged - moderate growth reduction
+    attack:
+      basal_area: [0.14, 0.28]
+      volume:     [0.18, 0.35]
+      height:     [0.08, 0.16]
+      density:    [0.24, 0.45]
+    decay:
+      basal_area: [0.10, 0.20]
+      volume:     [0.12, 0.26]
+      height:     [0.05, 0.12]
+      density:    [0.16, 0.32]
+    sustain:
+      basal_area: [0.05, 0.12]
+      volume:     [0.06, 0.15]
+      height:     [0.02, 0.08]
+      density:    [0.08, 0.18]
+    release:
+      basal_area: [0.02, 0.06]
+      volume:     [0.02, 0.08]
+      height:     [0.01, 0.04]
+      density:    [0.03, 0.09]
+    duration: 10
+  severe_50_80:
+    desc: 50 to 80 percent stem damage - severe growth reduction
+    attack:
+      basal_area: [0.30, 0.50]
+      volume:     [0.35, 0.60]
+      height:     [0.14, 0.28]
+      density:    [0.45, 0.70]
+    decay:
+      basal_area: [0.22, 0.40]
+      volume:     [0.26, 0.48]
+      height:     [0.10, 0.20]
+      density:    [0.32, 0.55]
+    sustain:
+      basal_area: [0.12, 0.26]
+      volume:     [0.14, 0.32]
+      height:     [0.05, 0.14]
+      density:    [0.18, 0.36]
+    release:
+      basal_area: [0.05, 0.14]
+      volume:     [0.06, 0.18]
+      height:     [0.02, 0.08]
+      density:    [0.08, 0.20]
+    duration: 12
+  catastrophic_80_100:
+    desc: 80 to 100 percent of stems damaged or destroyed - catastrophic growth reduction
+    attack:
+      basal_area: [0.50, 0.75]
+      volume:     [0.60, 0.85]
+      height:     [0.30, 0.60]
+      density:    [0.70, 0.90]
+    decay:
+      basal_area: [0.40, 0.65]
+      volume:     [0.48, 0.75]
+      height:     [0.22, 0.48]
+      density:    [0.55, 0.78]
+    sustain:
+      basal_area: [0.25, 0.50]
+      volume:     [0.30, 0.60]
+      height:     [0.12, 0.35]
+      density:    [0.35, 0.65]
+    release:
+      basal_area: [0.12, 0.32]
+      volume:     [0.15, 0.40]
+      height:     [0.06, 0.22]
+      density:    [0.18, 0.45]
+    duration: 16
+
+modulators:
+  young_stand:
+    threshold_height_ft: 40
+    multiplier_range: [1.0, 1.5]   # scales attack_drop and decay_years
+    
+  recent_thinning:
+    threshold_age_y: 10
+    multiplier_range: [1.0, 1.5]   # scales attack_drop and decay_years
+
+
+
+
+application:
+  - sample damage_fraction -> bin
+  - sample mortality p -> update TPA, BA instantly (separate mortality kernel)
+  - compute yearly m_t from ADSR with modulators
+  - apply: delta_BA_t := m_t * delta_BA_t_PMRC
+  - clamp to [floor, ceiling]
+  - stop at cap_after_year or when |m_t - 1| < 1e-3

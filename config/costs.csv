@@ -1,6 +1,0 @@
-item,value,units,notes
-planting_cost_per_tree,0.35,USD per tree,Default planting expense
-fert_cost_per_lb,0.32,USD per lb,Nitrogen fertiliser cost
-fert_premium_per_lb,0.18,USD per lb,Phosphorus fertiliser premium
-annual_carrying_cost,8.0,USD per acre,Annual management overhead
-catastrophe_penalty,3500.0,USD per acre,Loss when catastrophic disturbance occurs

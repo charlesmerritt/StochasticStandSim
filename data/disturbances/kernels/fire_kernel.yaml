@@ -1,0 +1,81 @@
+# Immediate, one-time losses at the year of fire.
+# Severity indicated by scorch% which is the best stand-level predictor of pine mortality and loss, correlated with height. Lower height = more scorch.
+# Cain 1985; Weise et al. 1989; Lillieholm & Hu 1987; Outcalt 2004; Ray & Landau 2019.
+# Cain 1985: winter burns in young loblolly, scorch guidance, small trees vulnerable.
+# Weise 1989: simulated defoliation.
+# Lillieholm & Hu 1987: scorch vs mortality and diameter growth in 19-yr loblolly.
+# Outcalt 2004: wildfire mortality lower with frequent Rx burning.
+# Ray & Landau 2019: mixed-severity Rx fire in loblolly altered structure; large near-term losses possible by design.
+
+metadata:
+  disturbance: fire
+  species: loblolly_pine
+  region: US_southeast
+  unit_convention:
+    loss_units: fraction
+  notes: >
+    Apply these as multiplicative one-time losses to surviving inventory at t_fire.
+    Then apply the growth envelope to survivors in subsequent years.
+
+# Severity classes based on % of crown scorch
+# Loss distribution: [min, q1, median, q3, max]
+sev_classes:
+  mild_0_10:
+    desc: 0 to 10 percent crown scorch, reused for rx fires
+    immediate_loss_range:
+      basal_area:   [0.00, 0.002, 0.005, 0.008, 0.015]
+      volume:       [0.00, 0.003, 0.007, 0.010, 0.020]
+      height:       [0.00, 0.001, 0.003, 0.005, 0.008]
+      density:      [0.00, 0.008, 0.015, 0.025, 0.050]
+  low_10_20:
+    desc: 10 to 20 percent crown scorch
+    immediate_loss_range:
+      basal_area:   [0.01, 0.015, 0.025, 0.040, 0.060]
+      volume:       [0.01, 0.018, 0.030, 0.045, 0.070]
+      height:       [0.002, 0.003, 0.006, 0.009, 0.014]
+      density:      [0.02, 0.050, 0.080, 0.120, 0.160]
+  moderate_20_50:
+    desc: 20 to 50 percent crown scorch
+    immediate_loss_range:
+      basal_area:   [0.03, 0.045, 0.070, 0.100, 0.150]
+      volume:       [0.04, 0.055, 0.080, 0.120, 0.180]
+      height:       [0.004, 0.007, 0.012, 0.018, 0.026]
+      density:      [0.05, 0.090, 0.140, 0.190, 0.250]
+  severe_50_80:
+    desc: 50 to 80 percent crown scorch
+    immediate_loss_range:
+      basal_area:   [0.08, 0.120, 0.170, 0.230, 0.300]
+      volume:       [0.10, 0.150, 0.220, 0.300, 0.380]
+      height:       [0.008, 0.015, 0.022, 0.030, 0.040]
+      density:      [0.12, 0.180, 0.240, 0.310, 0.380]
+  catastrophic_80_100:
+    desc: 80 to 100 percent crown scorch or complete defoliation
+    immediate_loss_range:
+      basal_area:   [0.15, 0.250, 0.380, 0.520, 0.650]
+      volume:       [0.18, 0.300, 0.440, 0.580, 0.720]
+      height:       [0.012, 0.022, 0.034, 0.046, 0.060]
+      density:      [0.20, 0.300, 0.400, 0.520, 0.650]
+
+
+modulators:
+  age_ht_multiplier:
+    young_0_10y: 1.25   # young stands, especially <8 ft height, show high mortality when scorched.
+    mid_10_25y: 1.0
+    mature_gt25y: 0.9
+  time_since_rx_burn_multiplier:
+    "<=3y": 0.85        # more frequent Rx burning reduces wildfire mortality.
+    "3_7y": 1.0
+    ">=8y": 1.1
+
+application:
+  algorithm:
+    - determine severity_class from observed or sampled percent_stems_damaged
+    - sample each metric loss from severity_class.immediate_loss_range
+    - apply modulators:
+    - multiply sampled loss by all applicable multipliers
+    - clamp each loss to [0.0, 0.95]
+    - update_inventory_at_t_wind:
+        - BA_new = BA_old * (1.0 - BA_loss)
+        - V_new  = V_old  * (1.0 - V_loss)
+        - N_new  = N_old  * (1.0 - density_loss)
+        - H_new  = H_old  * (1.0 - H_loss)

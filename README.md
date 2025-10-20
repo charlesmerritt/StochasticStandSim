@@ -1,6 +1,6 @@
 # StochasticStandSim
 
-StochasticStandSim provides a light-weight simulation environment for exploring
+StochasticStandSim provides a simulation environment for exploring
 forest stand management strategies with deterministic and stochastic
 disturbance processes.
 
@@ -13,10 +13,6 @@ disturbance processes.
    ```bash
    pip install -e .
    ```
-
-   The project depends on `pandas` and `pyyaml` for configuration loading in
-   addition to the reinforcement learning, plotting, and UI stacks defined in
-   `pyproject.toml`.
 
 ## Quick start
 

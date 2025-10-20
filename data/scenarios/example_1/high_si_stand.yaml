@@ -1,0 +1,7 @@
+site_region: "UCP"
+age: 0
+horizon: 50
+BA: 80
+SI25: 75
+volume: 0
+rng_seed: 42
