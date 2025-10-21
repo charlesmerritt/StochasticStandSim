@@ -25,8 +25,8 @@ def disable_debug_prints(monkeypatch: pytest.MonkeyPatch) -> None:
 )
 @pytest.mark.parametrize("form", list(growth.SIForm))
 def test_hd_si_roundtrip(age: float, hd: float, form: growth.SIForm) -> None:
-    si = growth.si_from_hd(age, hd, form=form)
-    recovered = growth.hd_from_si(age, si, form=form)
+    si = growth.si_from_hd(hd, form=form)
+    recovered = growth.hd_from_si(si, form=form)
     assert math.isclose(recovered, hd, rel_tol=1e-6, abs_tol=1e-6)
 
 
@@ -52,7 +52,7 @@ def test_step_and_run_horizon_consistency() -> None:
         tpa=600.0,
         region=growth.Region.UCP,
         si25=60.0,
-        hd=growth.hd_from_si(10.0, 60.0),
+        hd=growth.hd_from_si(60.0, growth.SIForm.PROJECTION),
     )
     next_state, ba = growth.step(initial)
     assert isinstance(next_state, growth.StandState)

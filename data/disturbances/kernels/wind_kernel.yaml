@@ -65,6 +65,9 @@ modulators:
     "<=2": 1.25         # Recently thinned stands show increased damage risk
     "3_5": 1.10
     ">=6": 1.00
+  sparse_stand_multiplier: # Stands under 600 TPA are more susceptible to wind damage
+    "<=600": 1.25
+    ">600": 1.00
   soil_saturation_multiplier: # Unused but described in literature
     dry: 1.00
     moist: 1.10
