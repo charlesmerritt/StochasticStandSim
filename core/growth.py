@@ -52,6 +52,19 @@ def _debug_print(label: str, value: Any) -> None:
         print(f"{label}: {value}")
 
 
+def classify_severity(value: float) -> str:
+    """Severity bin matching Fire/Wind `get_severity_class` logic."""
+    if value < 0.10:
+        return "mild_0_10"
+    if value < 0.20:
+        return "low_10_20"
+    if value < 0.50:
+        return "moderate_20_50"
+    if value < 0.80:
+        return "severe_50_80"
+    return "catastrophic_80_100"
+
+
 class Region(str, Enum):
     """Physiographic regions supported by PMRC whole-stand models."""
     LCP = "LCP"  # Lower Coastal Plain
@@ -320,6 +333,21 @@ class StandState:
     vol_ob: Optional[float] = None
     vol_ob_unthinned: Optional[float] = None
     active_envelopes: Tuple[dict, ...] = ()  # Track active disturbance envelopes for BA growth modulation
+    last_thin_age: Optional[float] = None
+    last_fertilize_age: Optional[float] = None
+    last_disturbance_age: Optional[float] = None
+    growth_paused: bool = False
+    fertilizer_years_remaining: int = 0
+    fertilizer_effect_strength: float = 0.0
+    rx_fire_years_remaining: int = 0
+    rx_fire_severity_multiplier: float = 1.0
+    cumulative_cash: float = 0.0
+    cumulative_discounted_cash: float = 0.0
+    cumulative_lev: float = 0.0
+    rotation_age_assumption: float = 30.0
+    salvage_window: int = 0
+    years_since_replant: Optional[float] = None
+
 
     def resolved_hd(self) -> float:
         if self.hd is not None:
@@ -347,6 +375,20 @@ class StandParams:
     si_form: SIForm = SIForm.PROJECTION
     vol_ob: Optional[float] = None
     vol_ob_unthinned: Optional[float] = None
+    last_thin_age: Optional[float] = None
+    last_fertilize_age: Optional[float] = None
+    last_disturbance_age: Optional[float] = None
+    growth_paused: bool = False
+    fertilizer_years_remaining: int = 0
+    fertilizer_effect_strength: float = 0.0
+    rx_fire_years_remaining: int = 0
+    rx_fire_severity_multiplier: float = 1.0
+    cumulative_cash: float = 0.0
+    cumulative_discounted_cash: float = 0.0
+    cumulative_lev: float = 0.0
+    rotation_age_assumption: float = 30.0
+    salvage_window: int = 0
+    years_since_replant: Optional[float] = None
 
     def to_state(self) -> StandState:
         hd_value = self.hd
@@ -394,6 +436,20 @@ class StandParams:
             si_form=self.si_form,
             vol_ob=vol_value,
             vol_ob_unthinned=vol_unthinned_value,
+            last_thin_age=self.last_thin_age,
+            last_fertilize_age=self.last_fertilize_age,
+            last_disturbance_age=self.last_disturbance_age,
+            growth_paused=self.growth_paused,
+            fertilizer_years_remaining=self.fertilizer_years_remaining,
+            fertilizer_effect_strength=self.fertilizer_effect_strength,
+            rx_fire_years_remaining=self.rx_fire_years_remaining,
+            rx_fire_severity_multiplier=self.rx_fire_severity_multiplier,
+            cumulative_cash=self.cumulative_cash,
+            cumulative_discounted_cash=self.cumulative_discounted_cash,
+            cumulative_lev=self.cumulative_lev,
+            rotation_age_assumption=self.rotation_age_assumption,
+            salvage_window=self.salvage_window,
+            years_since_replant=self.years_since_replant,
         )
 
 
@@ -408,8 +464,66 @@ def _advance_internal(
     a1 = state.age
     a2 = a1 + dt
 
+    event_logs: list[dict] = []
+    new_envelopes: list[dict] = []
+    remaining_disturbances: list[BaseDisturbance] = []
+
+    def _decay_counter(value: int) -> int:
+        if value <= 0:
+            return 0
+        return max(0, value - int(round(dt)))
+
+    if state.growth_paused:
+        salvage_window = max(0, state.salvage_window - int(round(dt)))
+        fert_remaining = _decay_counter(state.fertilizer_years_remaining)
+        rx_remaining = _decay_counter(state.rx_fire_years_remaining)
+        years_since_replant = (
+            None if state.years_since_replant is None else state.years_since_replant + dt
+        )
+
+        next_state = StandState(
+            age=a2,
+            tpa=state.tpa,
+            region=state.region,
+            si25=state.si25,
+            hd=state.hd,
+            ba=state.ba,
+            ba_unthinned=state.ba_unthinned,
+            ci=state.ci,
+            pending_disturbances=tuple(),
+            tpa_unthinned=state.tpa_unthinned,
+            si_form=state.si_form,
+            vol_ob=state.vol_ob,
+            vol_ob_unthinned=state.vol_ob_unthinned,
+            active_envelopes=tuple(),
+            last_thin_age=state.last_thin_age,
+            last_fertilize_age=state.last_fertilize_age,
+            last_disturbance_age=state.last_disturbance_age,
+            growth_paused=True,
+            fertilizer_years_remaining=fert_remaining,
+            fertilizer_effect_strength=state.fertilizer_effect_strength,
+            rx_fire_years_remaining=rx_remaining,
+            rx_fire_severity_multiplier=state.rx_fire_severity_multiplier,
+            cumulative_cash=state.cumulative_cash,
+            cumulative_discounted_cash=state.cumulative_discounted_cash,
+            cumulative_lev=state.cumulative_lev,
+            rotation_age_assumption=state.rotation_age_assumption,
+            salvage_window=salvage_window,
+            years_since_replant=years_since_replant,
+        )
+        ba_val = state.ba if state.ba is not None else 0.0
+        tpa_un = state.tpa_unthinned if state.tpa_unthinned is not None else 0.0
+        ba_un = state.ba_unthinned if state.ba_unthinned is not None else 0.0
+        vol_un = state.vol_ob_unthinned if state.vol_ob_unthinned is not None else 0.0
+        return next_state, ba_val, tuple(event_logs), tpa_un, ba_un, vol_un
+
     hd1 = state.resolved_hd()
     si_value = state.si25 if state.si25 is not None else si_from_hd(hd1, form=state.si_form)
+    if state.fertilizer_years_remaining > 0 and state.fertilizer_effect_strength > 0.0:
+        last_age = state.last_fertilize_age if state.last_fertilize_age is not None else state.age
+        elapsed = max(0.0, state.age - last_age)
+        boost = state.fertilizer_effect_strength * exp(-elapsed / 10.0)
+        si_value += boost
 
     tpa_unthinned_current = state.tpa_unthinned if state.tpa_unthinned is not None else state.tpa
     ba_unthinned_current = (
@@ -424,9 +538,6 @@ def _advance_internal(
     if ci_current is None and ba_unthinned_current > 0:
         ci_current = competition_index(ba_actual_current, ba_unthinned_current)
 
-    event_logs: list[dict] = []
-    remaining_disturbances: list[BaseDisturbance] = []
-    new_envelopes: list[dict] = []  # Track new envelopes to add
     vol_actual_current = state.vol_ob
     if vol_actual_current is None:
         try:
@@ -440,12 +551,13 @@ def _advance_internal(
         except ValueError:
             vol_unthinned_current = 0.0
 
+    disturbance_happened = False
+    catastrophic_hit = False
+    latest_disturbance_age = state.last_disturbance_age
+
     for disturbance in state.pending_disturbances:
-        # Check if disturbance occurs during this step [a1, a2]
         if a1 < disturbance.age <= a2 or abs(disturbance.age - a1) <= 1e-9:
-            # Apply disturbance at current age
             if isinstance(disturbance, ThinningDisturbance):
-                # Thinning: proportional removal
                 before_tpa = tpa_actual_current
                 before_ba = ba_actual_current
                 before_vol = vol_actual_current
@@ -473,76 +585,70 @@ def _advance_internal(
                         "hd_after": hd1,
                     }
                 )
-            
             elif isinstance(disturbance, (FireDisturbance, WindDisturbance)):
-                # Fire/Wind: Load kernel and apply losses
                 before_tpa = tpa_actual_current
                 before_ba = ba_actual_current
                 before_vol = vol_actual_current
                 before_hd = hd1
-                
-                # Load appropriate kernel from YAML
-                from .disturbances import load_kernel
+
+                from .disturbances import load_kernel, load_envelope_set
                 from pathlib import Path
-                
+
                 dist_type = "fire" if isinstance(disturbance, FireDisturbance) else "wind"
                 kernel_path = Path(__file__).parent.parent / "data" / "disturbances" / "kernels" / f"{dist_type}_kernel.yaml"
-                
+
                 try:
                     kernel = load_kernel(kernel_path)
-                    sev_class = disturbance.get_severity_class()
-                    
-                    # Sample random losses from kernel distributions
+                    severity_value = disturbance.severity
+                    if dist_type == "fire" and state.rx_fire_years_remaining > 0:
+                        severity_value = max(0.001, min(0.999, severity_value * state.rx_fire_severity_multiplier))
+                    sev_class = classify_severity(severity_value)
+
                     post_dist = kernel.sample_losses(
                         sev_class,
                         ba=ba_actual_current,
                         vol=vol_actual_current,
                         hd=hd1,
-                        tpa=tpa_actual_current
+                        tpa=tpa_actual_current,
                     )
-                    
+
                     tpa_actual_current = post_dist['tpa']
                     ba_actual_current = post_dist['ba']
                     vol_actual_current = post_dist['vol']
                     hd1 = post_dist['hd']
-                    
-                    # Load envelope for future BA growth modulation
-                    from .disturbances import load_envelope_set
+
                     envelope_path = Path(__file__).parent.parent / "data" / "disturbances" / "envelopes" / f"{dist_type}_envelope.yaml"
-                    
                     try:
                         envelope_set = load_envelope_set(envelope_path)
                         envelope = envelope_set.get_envelope(sev_class)
-                        
-                        # Track this envelope for future BA growth modulation
-                        # Note: envelope duration will come from YAML in future
-                        active_envelope = {
-                            'type': dist_type,
-                            'age_occurred': a1,
-                            'envelope': envelope,
-                            'severity_class': sev_class,
-                        }
-                        new_envelopes.append(active_envelope)
+                        new_envelopes.append(
+                            {
+                                'type': dist_type,
+                                'age_occurred': a1,
+                                'envelope': envelope,
+                                'severity_class': sev_class,
+                            }
+                        )
                     except (FileNotFoundError, ValueError, KeyError) as e_env:
-                        # Envelope loading failed - continue without it
                         import warnings
                         warnings.warn(f"Could not load {dist_type} envelope: {e_env}. Continuing without envelope effects.")
-                    
+
                 except (FileNotFoundError, ValueError, KeyError) as e:
-                    # If kernel loading fails, log warning and skip disturbance
                     import warnings
                     warnings.warn(f"Could not load {dist_type} kernel: {e}. Disturbance not applied.")
-                
-                # Update competition index
+
                 if ba_unthinned_current > 0:
                     ci_current = competition_index(ba_actual_current, ba_unthinned_current)
-                
+
+                severity_value = disturbance.severity if 'severity_value' not in locals() else severity_value
+                sev_class_logged = classify_severity(severity_value)
                 event_logs.append(
                     {
                         "type": dist_type,
                         "age": disturbance.age,
                         "severity": disturbance.severity,
-                        "severity_class": disturbance.get_severity_class(),
+                        "severity_adjusted": severity_value,
+                        "severity_class": sev_class_logged,
                         "tpa_before": before_tpa,
                         "tpa_after": tpa_actual_current,
                         "ba_before": before_ba,
@@ -553,6 +659,10 @@ def _advance_internal(
                         "hd_after": hd1,
                     }
                 )
+                disturbance_happened = True
+                latest_disturbance_age = disturbance.age
+                if sev_class_logged.startswith("catastrophic"):
+                    catastrophic_hit = True
         else:
             remaining_disturbances.append(disturbance)
 
@@ -582,32 +692,26 @@ def _advance_internal(
         ba2_actual = ba_thinned(ba2_unthinned, ci_next)
     else:
         ba2_actual = ba2_unthinned
-    
-    # Apply active envelope multipliers to BA growth increment
+
     if state.active_envelopes:
         ba_increment = ba2_actual - ba_actual_current
         combined_multiplier = 1.0
-        
+
         for env_info in state.active_envelopes:
             years_since = a1 - env_info['age_occurred']
             envelope = env_info['envelope']
-            
-            # Calculate ADSR multiplier for this year
+
             if years_since < envelope.attack_duration_years:
                 mult = 1.0 - envelope.attack_drop
             elif years_since < envelope.attack_duration_years + envelope.decay_years:
-                # Decay phase - linear interpolation
-                t = (years_since - envelope.attack_duration_years) / envelope.decay_years
+                t = (years_since - envelope.attack_duration_years) / envelope.decay_years if envelope.decay_years > 0 else 0.0
                 attack_val = 1.0 - envelope.attack_drop
                 mult = attack_val + (envelope.sustain_level - attack_val) * t
             else:
-                # Sustain phase (duration check will be added when YAML has it)
                 mult = envelope.sustain_level
-            
-            # Compound multiple envelope effects
+
             combined_multiplier *= mult
-        
-        # Apply combined multiplier to BA increment
+
         ba_increment_modulated = ba_increment * combined_multiplier
         ba2_actual = ba_actual_current + ba_increment_modulated
 
@@ -621,9 +725,22 @@ def _advance_internal(
     except ValueError:
         vol2_actual = 0.0
 
-    # Combine existing and new envelopes
     all_active_envelopes = list(state.active_envelopes) + new_envelopes
-    
+
+    salvage_window_next = max(0, state.salvage_window - int(round(dt)))
+    if catastrophic_hit:
+        salvage_window_next = max(salvage_window_next, 5)
+    fert_remaining_next = _decay_counter(state.fertilizer_years_remaining)
+    rx_remaining_next = _decay_counter(state.rx_fire_years_remaining)
+    years_since_replant = (
+        None if state.years_since_replant is None else state.years_since_replant + dt
+    )
+
+    growth_paused_next = state.growth_paused or catastrophic_hit
+    last_disturbance_age_next = state.last_disturbance_age
+    if disturbance_happened:
+        last_disturbance_age_next = latest_disturbance_age
+
     next_state = StandState(
         age=a2,
         tpa=tpa2_actual,
@@ -639,6 +756,20 @@ def _advance_internal(
         vol_ob=vol2_actual,
         vol_ob_unthinned=vol2_unthinned,
         active_envelopes=tuple(all_active_envelopes),
+        last_thin_age=state.last_thin_age,
+        last_fertilize_age=state.last_fertilize_age,
+        last_disturbance_age=last_disturbance_age_next,
+        growth_paused=growth_paused_next,
+        fertilizer_years_remaining=fert_remaining_next,
+        fertilizer_effect_strength=state.fertilizer_effect_strength,
+        rx_fire_years_remaining=rx_remaining_next,
+        rx_fire_severity_multiplier=state.rx_fire_severity_multiplier,
+        cumulative_cash=state.cumulative_cash,
+        cumulative_discounted_cash=state.cumulative_discounted_cash,
+        cumulative_lev=state.cumulative_lev,
+        rotation_age_assumption=state.rotation_age_assumption,
+        salvage_window=salvage_window_next,
+        years_since_replant=years_since_replant,
     )
 
     _debug_print("step next_state", next_state)
@@ -646,7 +777,6 @@ def _advance_internal(
     _debug_print("step ba_result", ba2_actual)
 
     return next_state, ba2_actual, tuple(event_logs), tpa2_unthinned, ba2_unthinned, vol2_unthinned
-
 
 def step(state: StandState, dt: float = 1.0, cfg: GrowthConfig = GrowthConfig()) -> Tuple[StandState, float]:
     next_state, ba_value, _, _, _, _ = _advance_internal(state, dt, cfg)

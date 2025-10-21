@@ -74,7 +74,7 @@ application:
     - apply modulators:
     - multiply sampled loss by all applicable multipliers
     - clamp each loss to [0.0, 0.95]
-    - update_inventory_at_t_wind:
+    - update_inventory_at_t_fire:
         - BA_new = BA_old * (1.0 - BA_loss)
         - V_new  = V_old  * (1.0 - V_loss)
         - N_new  = N_old  * (1.0 - density_loss)

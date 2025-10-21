@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import asdict
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pandas as pd
 import streamlit as st
 
-from core.env import StandEnv
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from core.env import ActionType, StandEnv
 from core.growth import Region, StandParams
 
 
@@ -55,11 +61,18 @@ def _append_history(snapshot: Dict[str, float], reward: float, breakdown: Dict[s
     st.session_state["rewards"].append({"Reward": reward, **breakdown})
 
 
-def _reset_environment(params: StandParams, thin_max: float, disturbance_fire: float, disturbance_wind: float) -> None:
+def _reset_environment(
+    params: StandParams,
+    thin_max: float,
+    disturbance_fire: float,
+    disturbance_wind: float,
+    max_age: float,
+) -> None:
     env = StandEnv(
         stand=params,
         thin_max_fraction=thin_max,
         disturbance_probs={"fire": disturbance_fire, "wind": disturbance_wind},
+        max_age=max_age,
     )
     env.reset()
     st.session_state["env"] = env
@@ -73,13 +86,10 @@ def _reset_environment(params: StandParams, thin_max: float, disturbance_fire: f
         snapshot,
         0.0,
         {
-            "growth_increment": 0.0,
-            "harvested_volume": 0.0,
-            "disturbance_loss": 0.0,
-            "gross_value": 0.0,
-            "thinning_cost": 0.0,
-            "net_value": 0.0,
-            "discount_factor": 1.0,
+            "cash_flow": 0.0,
+            "cumulative_cash": 0.0,
+            "npv": 0.0,
+            "lev": 0.0,
         },
     )
 
@@ -94,6 +104,7 @@ def _build_setup_section() -> Tuple[bool, Dict[str, float]]:
         options["age"] = st.number_input("Initial age (years)", min_value=1.0, max_value=20.0, value=1.0, step=1.0)
         options["tpa"] = st.number_input("Planting density (trees/ac)", min_value=100.0, max_value=1200.0, value=600.0, step=25.0)
         options["si25"] = st.number_input("Site index (ft @ 25 yrs)", min_value=40.0, max_value=90.0, value=60.0, step=1.0)
+        options["max_age"] = st.number_input("Rotation horizon (years)", min_value=10.0, max_value=60.0, value=35.0, step=1.0)
         thin_max = st.slider("Max thinning removal fraction", min_value=0.0, max_value=0.9, value=0.4, step=0.05)
         fire_prob = st.slider("Fire probability", min_value=0.0, max_value=0.5, value=0.05, step=0.01)
         wind_prob = st.slider("Wind probability", min_value=0.0, max_value=0.5, value=0.03, step=0.01)
@@ -117,7 +128,7 @@ def _render_history() -> None:
     st.subheader("Trajectory")
     chart_df = df.set_index("Age (years)") if "Age (years)" in df.columns else df
     st.line_chart(chart_df, height=260)
-    st.dataframe(df.style.format("{:.2f}"), use_container_width=True)
+    st.dataframe(df.style.format("{:.2f}"), width="stretch")
 
 
 def _render_events(events: Tuple[dict, ...]) -> None:
@@ -159,7 +170,13 @@ def main() -> None:
             region=_region_options()[setup_opts["region"]],
             si25=setup_opts["si25"],
         )
-        _reset_environment(params, setup_opts["thin_max"], setup_opts["fire_prob"], setup_opts["wind_prob"])
+        _reset_environment(
+            params,
+            setup_opts["thin_max"],
+            setup_opts["fire_prob"],
+            setup_opts["wind_prob"],
+            setup_opts["max_age"],
+        )
         st.success("Rotation started. Use the controls below to advance time.")
 
     env: StandEnv | None = st.session_state.get("env")
@@ -174,30 +191,59 @@ def main() -> None:
     with left_col:
         st.subheader("Controls")
         thin_max = st.session_state["thin_max_fraction"]
-        thin_value = st.slider(
-            "Thinning removal fraction",
-            min_value=0.0,
-            max_value=float(thin_max),
-            value=0.0,
-            step=0.01,
-            key="thin_slider",
-        )
+        action_map = {
+            "No action": ActionType.NOOP,
+            "Thinning": ActionType.THIN,
+            "Harvest (optional replant)": ActionType.HARVEST,
+            "Sell (exit rotation)": ActionType.SELL,
+            "Salvage": ActionType.SALVAGE,
+            "Replant": ActionType.REPLANT,
+            "Fertilize": ActionType.FERTILIZE,
+            "Prescribed fire": ActionType.RX_FIRE,
+        }
+        action_label = st.selectbox("Select management action", list(action_map.keys()))
+        selected_action = action_map[action_label]
+
+        action_params = [0.0, 0.0]
+        if selected_action == ActionType.THIN:
+            if thin_max <= 0.0:
+                st.info("Thinning disabled: maximum removal fraction is 0.")
+            removal = st.slider(
+                "Removal fraction (absolute)",
+                min_value=0.0,
+                max_value=float(thin_max),
+                value=min(0.25, float(thin_max)),
+                step=0.01,
+                key="thin_amount",
+            )
+            if thin_max > 0:
+                action_params[0] = removal / thin_max
+        elif selected_action == ActionType.HARVEST:
+            replant_now = st.checkbox("Replant immediately after harvest", value=True)
+            action_params[0] = 1.0 if replant_now else 0.0
+
         advance = st.button("Step environment")
         reset = st.button("Reset rotation")
 
         if reset:
             st.session_state["env"] = None
-            st.experimental_rerun()
+            st.rerun()
 
         if advance and not st.session_state["terminated"]:
-            action = thin_value / thin_max if thin_max > 0 else 0.0
-            obs, reward, terminated, _, info = env.step(action)
+            payload = {"type": int(selected_action.value), "value": action_params}
+            obs, reward, terminated, _, info = env.step(payload)
             snapshot = _stand_snapshot(env)
-            _append_history(snapshot, reward, info.get("reward_breakdown", {}))
+            breakdown = info.get("finance", {})
+            _append_history(snapshot, reward, breakdown if isinstance(breakdown, dict) else {})
             st.session_state["terminated"] = terminated
-            if terminated:
-                st.warning("Rotation terminated: stand reached max age.")
-            st.experimental_rerun()
+            if "action_warn" in info:
+                st.warning(info["action_warn"])
+            elif info.get("action_blocked"):
+                st.info("Action skipped due to disturbance occurring this year.")
+            elif terminated:
+                st.warning("Rotation terminated: stand reached max age or sell action.")
+            else:
+                st.rerun()
 
     with right_col:
         current_snapshot = _stand_snapshot(env)

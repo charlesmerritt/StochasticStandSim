@@ -4,7 +4,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
+import gymnasium as gym
 from plots import plots
 
 
