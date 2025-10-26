@@ -7,12 +7,18 @@ Views: per-step table, state panel, reward breakdown, plots."""
 from __future__ import annotations
 
 import io
+import sys
+from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
 
 try:  # Stable Baselines is optional; the UI gracefully degrades if missing.
     from stable_baselines3 import PPO
@@ -92,17 +98,27 @@ def _format_state_table(state: Dict[str, float]) -> pd.DataFrame:
     return df
 
 
-def _probability_slider(label: str, default: float) -> float:
-    return st.slider(label, min_value=0.0, max_value=1.0, value=float(default), step=0.01)
+def _probability_slider(label: str, default: float, *, key: Optional[str] = None) -> float:
+    return st.slider(
+        label,
+        min_value=0.0,
+        max_value=1.0,
+        value=float(default),
+        step=0.01,
+        key=key,
+    )
 
 
-def _severity_slider(label: str, default_min: float, default_max: float) -> Tuple[float, float]:
+def _severity_slider(
+    label: str, default_min: float, default_max: float, *, key: Optional[str] = None
+) -> Tuple[float, float]:
     return st.slider(
         label,
         min_value=0.0,
         max_value=1.0,
         value=(float(default_min), float(default_max)),
         step=0.01,
+        key=key,
     )
 
 
@@ -114,9 +130,14 @@ def _build_disturbance_settings() -> Dict[str, DisturbanceSetting]:
             enabled = st.checkbox(
                 f"Enable {template.label}", value=template.enabled, key=f"toggle_{key}"
             )
-            prob = _probability_slider("Annual probability", template.probability)
+            prob = _probability_slider(
+                "Annual probability", template.probability, key=f"{key}_annual_probability"
+            )
             sev_min, sev_max = _severity_slider(
-                "Severity range", template.severity_min, template.severity_max
+                "Severity range",
+                template.severity_min,
+                template.severity_max,
+                key=f"{key}_severity_range",
             )
             boost = st.slider(
                 "Post-event probability boost",
@@ -124,12 +145,14 @@ def _build_disturbance_settings() -> Dict[str, DisturbanceSetting]:
                 max_value=1.0,
                 value=float(template.envelope_boost),
                 step=0.01,
+                key=f"{key}_probability_boost",
             )
             years = st.slider(
                 "Duration of elevated risk (years)",
                 min_value=0,
                 max_value=25,
                 value=int(template.envelope_years),
+                key=f"{key}_envelope_years",
             )
 
         settings[key] = DisturbanceSetting(

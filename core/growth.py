@@ -1,889 +1,379 @@
-""" PMRC deterministic growth baseline for loblolly pine plantations
-
-State variables this module updates per step:
-- age (years)
-- trees per acre (TPA)
-- dominant height (HD, ft) OR site index at base age 25 (SI25, ft)
-- region flag ("LCP" for Lower Coastal Plain; "UCP" for Upper Coastal Plain + Piedmont).
-
-Only unthinned, unfertilized growth. Merchantability and thinning omitted by design.
-
-Equations and coefficients follow Harrison & Borders (PMRC Technical Report 1996-1):
-- Dominant height site-index curves for soil group A (Pienaar & Shiver form) and a Chapman–Richards
-  height projection equation with parameters k=0.014452 and m=0.8216.
-- Survival with asymptote 100 TPA.
-- Basal area prediction equation parameters by region (Table 15). BA is derived each step when needed.
-"""
-
 from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Literal, Tuple
+from math import exp, log, sqrt
 
-import os
-import sys
-
-# When executed as a script (`python core/growth.py`), Python prepends the package directory
-# (`core/`) to sys.path. That causes stdlib imports (e.g., `enum -> import types`) to resolve to
-# our local `core/types.py`, breaking the runtime. This drops the package directory from sys.path
-# and prepends the repo root instead.
-_PKG_DIR = os.path.dirname(__file__)
-_ROOT_DIR = os.path.dirname(_PKG_DIR)
-if sys.path and sys.path[0] == _PKG_DIR:
-    sys.path[0] = _ROOT_DIR
-else:
-    if _PKG_DIR in sys.path:
-        sys.path.remove(_PKG_DIR)
-    if _ROOT_DIR not in sys.path:
-        sys.path.insert(0, _ROOT_DIR)
-
-from dataclasses import dataclass
-from enum import Enum
-from math import exp, log
-from typing import Any, Optional, Tuple
-
-from .disturbances import BaseDisturbance, ThinningDisturbance, FireDisturbance, WindDisturbance
+from core.pmrc_model import PMRCModel
+from core.disturbances import make_fire_event, make_wind_event, DisturbanceEvent, get_severity
 
 
-def _debug_enabled() -> bool:
-    flag = os.getenv("PMRC_GROWTH_DEBUG", "0")
-    return flag.lower() not in ("", "0", "false")
+Region = Literal["ucp", "pucp", "lcp"]
 
 
-def _debug_print(label: str, value: Any) -> None:
-    if _debug_enabled():
-        print(f"{label}: {value}")
+# --------------------------- Data models ---------------------------
 
-
-def classify_severity(value: float) -> str:
-    """Severity bin matching Fire/Wind `get_severity_class` logic."""
-    if value < 0.10:
-        return "mild_0_10"
-    if value < 0.20:
-        return "low_10_20"
-    if value < 0.50:
-        return "moderate_20_50"
-    if value < 0.80:
-        return "severe_50_80"
-    return "catastrophic_80_100"
-
-
-class Region(str, Enum):
-    """Physiographic regions supported by PMRC whole-stand models."""
-    LCP = "LCP"  # Lower Coastal Plain
-    UCP = "UCP"  # Upper Coastal Plain + Piedmont
-
-
-@dataclass(frozen=True)
-class GrowthConfig:
-    """Static configuration for the PMRC growth model.
-
-    Attributes:
-        base_age: Base age for site index in years. PMRC uses 25.
-        min_tpa_asymptote: Asymptotic lower bound in survival equation. PMRC uses 100.
-    """
+@dataclass
+class StandConfig:
+    region: Region = "ucp"
     base_age: int = 25
-    min_tpa_asymptote: float = 100.0
-# -------------------- Subproblem 1: Dominant height and site index --------------------
-# We need: (a) project HD from age1 to age2, given HD1; (b) convert between SI25 and HD at any age.
-# Use soil group A curves and PMRC Chapman–Richards parameters.
-
-# Height projection parameters (soil group A, all regions)
-_K = 0.014452  # growth rate
-_M = 0.8216    # shape exponent
-
-# Site-index conversion parameters (Pienaar & Shiver for soil group A)
-# Two alternative published forms exist in the report:
-#   Form A (older PS80) with constants 0.7476 and 0.05507
-#   Form B (PMRC projection-consistent) with constants 0.30323 and 0.014452 and exponent 0.8216
-# We provide both for completeness and default to the projection-consistent set so HD↔SI is compatible
-# with the Chapman–Richards projector.
-
-class SIForm(str, Enum):
-    PS80 = "PS80"              # 0.7476, 0.05507
-    PROJECTION = "PROJECTION"  # 0.30323, 0.014452, m=0.8216
+    hold_tpa_below_asymptote: bool = True  # hold when TPA <= 100
+    tpa_geometric_decay: Optional[float] = 0.99
+    tpa_from_ba_policy: Literal["qmd_constant", "gamma"] = "qmd_constant"
+    tpa_from_ba_gamma: float = 1.0  # used when policy == "gamma"
 
 
-def hd_project(age1: float, hd1: float, age2: float) -> float:
-    """Eq. 12
-    Project dominant height from age1 to age2 using PMRC Chapman–Richards.
-
-    Args:
-        age1: current stand age in years.
-        hd1: dominant height at age1 in feet.
-        age2: target age in years (> age1).
-    Returns:
-        Projected dominant height at age2 in feet.
-    """
-    if age2 <= 0 or age1 <= 0:
-        raise ValueError("Ages must be positive.")
-    if age2 < age1:
-        raise ValueError("age2 must be >= age1 for projection.")
-    num = 1.0 - exp(-_K * age2)
-    den = 1.0 - exp(-_K * age1)
-    if den <= 0.0:
-        raise ValueError("Invalid age1 for projection; denominator nonpositive.")
-    result = hd1 * (num / den) ** _M
-    _debug_print("hd_project result", result)
-    return result
+@dataclass
+class FertEvent:
+    age: float
+    N: float
+    P: float
 
 
-def si_from_hd(hd: float, form: SIForm = SIForm.PROJECTION) -> float:
-    """
-    Eq. 10 & 13
-    Convert dominant height at age to site index at base age 25.
-    'A' in the report is not age! It is just a notational symbol, perhaps referring to soil group.
-    Two forms. Default uses the projection-consistent parameters to keep HD and SI internally compatible.
-    """
-    if form == SIForm.PS80: # Eq. 10
-        c, k, e = 0.7476, 0.05507, 1.435
-        result = hd * (c / (1.0 - exp(-k))) ** e
-    else: # Eq. 13
-        # hd = si25 * \left(\frac{0.30323}{1-e^{-0.014452}}\right)^{-0.8216}
-        c, k, m = 0.30323, _K, _M
-        result = hd * (c / (1.0 - exp(-k)))** m
-    _debug_print("si_from_hd result", result)
-    return result
+@dataclass
+class ThinEvent:
+    age: float
+    # Target residual BA at the thin age, like R's thin*_residBA
+    residual_ba: float
+    row_fraction: float = 0.25
 
 
-def hd_from_si(si25: float, form: SIForm) -> float:
-    """
-    Eq. 11 & 14
-    Convert site index at base age 25 to dominant height at age.
-
-    Inverse of si_from_hd under the same form selection.
-    """
-    if form == SIForm.PS80: # Eq. 11
-        c, k, e = 0.7476, 0.05507, 1.435
-        result = si25 * (c / (1.0 - exp(-k))) ** -e
-    else: # Eq. 14
-        # hd = si25 * \left(\frac{0.30323}{1-e^{-0.014452}}\right)^{0.8216}
-        c, k, m = 0.30323, _K, _M
-        result = si25 * (c / (1.0 - exp(-k))) ** -m
-    _debug_print("hd_from_si result", result)
-    return result
-
-
-
-# -------------------- Subproblem 2: Survival (TPA) --------------------
-# Asymptotic survival of 100 TPA, function of SI25 and ages.
-
-def tpa_project(tpa1: float, si25: float, age1: float, age2: float, cfg: GrowthConfig = GrowthConfig()) -> float:
-    """Project trees per acre using the PMRC survival equation with a 100 TPA asymptote.
-
-    TPA2 = 100 + (TPA1 - 100)^{0.745339} * [1 + 0.00034252 * SI25 * (A2^{1.97472} - A1^{1.97472})]^{-1/0.745339}
-
-    Constraints:
-        - Only valid when TPA1 > asymptote (100) as per PMRC guidance.
-        - If TPA1 <= 100, caller should hold TPA constant or apply a user-specified survival rate.
-    """
-    a = cfg.min_tpa_asymptote
-    if tpa1 <= a:
-        result = tpa1  # hold constant as a conservative default per report guidance
-        _debug_print("tpa_project result", result)
-        return result
-    p = 0.745339
-    g = 0.00034252
-    r = 1.97472
-    result = 100 + (((tpa1- 100)**-p) + (g**2) * si25 * ((age2**r) - (age1**r)))**-(1/p)
-    _debug_print("tpa_project result", result)
-    return result
-
-
-# -------------------- Subproblem 3: Basal area (prediction form) --------------------
-# We use the prediction form ln(BA) = b0 + b1/A + b2 ln(TPA) + b3 ln(HD) + b4 ln(TPA)/A + b5 ln(HD)/A.
-# Coefficients differ by region (Table 15). BA in ft^2/acre. Optional Piedmont hardwood term is omitted here.
-
-_BA_COEFFS = {
-    Region.LCP:  (0.0,       -42.689283, 0.367244, 0.659985, 2.012724, 7.703502),
-    Region.UCP:  (-0.855557, -36.050347, 0.299071, 0.980246, 3.309212, 3.787258),
-}
-
-
-def ba_predict(age: float, tpa: float, hd: float, region: Region) -> float:
-    """Eq. 16
-    Predict basal area per acre at given age, trees per acre, and dominant height.
-
-    Returns BA in ft^2/acre. Strictly used for derived outputs. Not stored in state.
-    """
-    if tpa <= 0 or hd <= 0 or age <= 0:
-        raise ValueError("age, tpa, and hd must be positive.")
-    b0, b1, b2, b3, b4, b5 = _BA_COEFFS[region]
-    # Eq. 16
-    lnBA = (
-        b0
-        + (b1 / age)
-        + (b2 * log(tpa))
-        + (b3 * log(hd))
-        + (b4 * (log(tpa) / age))
-        + (b5 * (log(hd) / age))
-    )
-    result = max(0.0, float(exp(lnBA)))
-    _debug_print("ba_predict result", result)
-    return result
-
-def ba_project(age1: float, tpa1: float, tpa2: float, ba1: float, hd1: float, hd2: float, age2: float, region: Region) -> float:
-    """Eq. 17
-    Project basal area per acre at given age, trees per acre, and dominant height.
-
-    Returns BA in ft^2/acre. Strictly used for derived outputs. Not stored in state.
-    """
-    if tpa1 <= 0 or hd1 <= 0 or age1 <= 0 or age2 <= 0:
-        raise ValueError("age1, tpa1, hd1, and age2 must be positive.")
-    if age2 <= age1:
-        raise ValueError("age2 must be > age1 for projection.")
-    b0, b1, b2, b3, b4, b5 = _BA_COEFFS[region]
-    # Eq. 17
-    lnBA2 = (
-        log(ba1) + (b1 * ((1/age2) - (1/age1))) + 
-        (b2 * (log(tpa2) - log(tpa1))) + 
-        (b3 * (log(hd2) - log(hd1))) + 
-        (b4 * ((log(tpa2)/age2) - (log(tpa1)/age1))) + 
-        (b5 * ((log(hd2)/age2) - (log(hd1)/age1)))
-    )
-    result = max(0.0, float(exp(lnBA2)))
-    _debug_print("ba_project result", result)
-    return result
-
-def competition_index(ba_after: float, ba_unthinned: float) -> float:
-    """
-    Eq. (26) CI = 1 - BA_after / BA_unthinned.
-    Caller must supply BA of the residual stand immediately after thinning (same age)
-    and BA of the unthinned counterpart at that age. Returns CI in [0, 1].
-    """
-    if ba_unthinned <= 0:
-        raise ValueError("ba_unthinned must be positive.")
-    ci = 1.0 - (ba_after / ba_unthinned)
-    return max(0.0, min(1.0, ci))  # clip numerically
-
-def ci_project(ci1: float, age1: float, age2: float, region: Region=Region.UCP) -> float:
-    """
-    Eq. (27) recovery envelope: CI2 = CI1 * exp(-beta * (A2 - A1)).
-    beta > 0 governs recovery speed toward the unthinned condition.
-    """
-    if region == Region.UCP:
-        beta = 0.076472
-    elif region == Region.LCP:
-        beta = 0.110521  
-    else:
-        raise ValueError("region must be Region.UCP or Region.LCP.")
-    if age2 <= age1:
-        raise ValueError("age2 must be > age1.")
-    if ci1 < 0.0:
-        raise ValueError("ci1 must be >= 0.")
-    dt = age2 - age1
-    return max(0.0, ci1 * exp(-beta * dt))
-
-def ba_thinned(ba_unthinned2: float, ci2: float) -> float:
-    """
-    Eq. (28) reconstruction at A2: BA_thinned,2 = BA_unthinned,2 * (1 - CI2).
-    """
-    if ba_unthinned2 < 0:
-        raise ValueError("ba_unthinned2 must be >= 0.")
-    ci2 = max(0.0, min(1.0, ci2))
-    return ba_unthinned2 * (1.0 - ci2)
-    
-def tvob(age: float, tpa: float, hd: float, ba: float, region: Region = Region.UCP) -> float:
-    """
-    PMRC Eq. 19 – Total volume outside bark (ft^3/ac) for UCP.
-    ln(Y) = b0 + b1*ln(HD) + b2*ln(BA) + b3*(ln(TPA)/A)
-            + b4*(ln(HD)/A) + b5*(ln(BA)/A)
-    """
-
-    if age <= 0 or tpa <= 0 or hd <= 0 or ba <= 0:
-        return 0.0
-
-    if region == Region.UCP:
-        b0 = 0.0
-        b1 = 0.268552
-        b2 = 1.368844
-        b3 = -7.466863
-        b4 = 8.934524
-        b5 = 3.553411
-    else:
-        raise ValueError("TVOB coefficients currently implemented for Region.UCP only.")
-
-    lnY = (
-        b0
-        + b1 * log(hd)
-        + b2 * log(ba)
-        + b3 * (log(tpa) / age)
-        + b4 * (log(hd) / age)
-        + b5 * (log(ba) / age)
-    )
-    result = float(exp(lnY))
-    _debug_print("tvob result", result)
-    return result
-
-# -------------------- Subproblem 4: One-step state update --------------------
 @dataclass
 class StandState:
-    """Minimal MDP state for growth.
-
-    If si25 is provided, hd is ignored and recomputed each step for internal consistency.
-    """
     age: float
     tpa: float
-    region: Region
-    si25: Optional[float] = None
-    hd: Optional[float] = None
-    ba: Optional[float] = None
-    ba_unthinned: Optional[float] = None
-    ci: Optional[float] = None
-    pending_disturbances: Tuple[BaseDisturbance, ...] = ()
-    tpa_unthinned: Optional[float] = None
-    si_form: SIForm = SIForm.PROJECTION
-    vol_ob: Optional[float] = None
-    vol_ob_unthinned: Optional[float] = None
-    active_envelopes: Tuple[dict, ...] = ()  # Track active disturbance envelopes for BA growth modulation
-    last_thin_age: Optional[float] = None
-    last_fertilize_age: Optional[float] = None
-    last_disturbance_age: Optional[float] = None
-    growth_paused: bool = False
-    fertilizer_years_remaining: int = 0
-    fertilizer_effect_strength: float = 0.0
-    rx_fire_years_remaining: int = 0
-    rx_fire_severity_multiplier: float = 1.0
-    cumulative_cash: float = 0.0
-    cumulative_discounted_cash: float = 0.0
-    cumulative_lev: float = 0.0
-    rotation_age_assumption: float = 30.0
-    salvage_window: int = 0
-    years_since_replant: Optional[float] = None
+    si25: Optional[float]
+    hd: float
+    ba: float
+    ba_unthinned: float = 0.0  # what BA would be without thinning
+    tvob: float = 0.0
+    ci: float = 0.0  # competition index used only during recovery
+    # CI recovery anchor after a thin:
+    ci_anchor_age: Optional[float] = None
+    ci_anchor_value: Optional[float] = None
+    # bookkeeping
+    history: Dict[str, float] = field(default_factory=dict)
+    fert_hd_applied: float = 0.0
+    fert_ba_applied: float = 0.0
 
 
-    def resolved_hd(self) -> float:
-        if self.hd is not None:
-            return self.hd
-        if self.si25 is not None:
-            return hd_from_si(self.si25, form=self.si_form)
-        raise ValueError("hd or si25 must be set.")
+# --------------------------- Stand engine ---------------------------
 
+class Stand:
+    def __init__(self, init: StandState, cfg: StandConfig | None = None):
+        self.cfg = cfg or StandConfig()
+        assert 0.0 < self.cfg.tpa_geometric_decay <= 1.0
+        # normalize region in both places
+        self.model = PMRCModel(region=self.cfg.region)
+        
+        # Require one of {hd, si25}
+        has_hd = init.hd is not None and init.hd > 0
+        has_si = init.si25 is not None and init.si25 > 0
+        if not (has_hd or has_si):
+            raise ValueError("Stand init requires hd > 0 or si25 > 0.")
 
-@dataclass(frozen=True)
-class StandParams:
-    """Configuration bundle for initializing example stands."""
-
-    name: str
-    age: float
-    tpa: float
-    region: Region
-    si25: Optional[float] = None
-    hd: Optional[float] = None
-    ba: Optional[float] = None
-    ba_unthinned: Optional[float] = None
-    ci: Optional[float] = None
-    disturbances: Tuple[BaseDisturbance, ...] = ()
-    fert: Optional[Tuple[float, bool]] = None
-    si_form: SIForm = SIForm.PROJECTION
-    vol_ob: Optional[float] = None
-    vol_ob_unthinned: Optional[float] = None
-    last_thin_age: Optional[float] = None
-    last_fertilize_age: Optional[float] = None
-    last_disturbance_age: Optional[float] = None
-    growth_paused: bool = False
-    fertilizer_years_remaining: int = 0
-    fertilizer_effect_strength: float = 0.0
-    rx_fire_years_remaining: int = 0
-    rx_fire_severity_multiplier: float = 1.0
-    cumulative_cash: float = 0.0
-    cumulative_discounted_cash: float = 0.0
-    cumulative_lev: float = 0.0
-    rotation_age_assumption: float = 30.0
-    salvage_window: int = 0
-    years_since_replant: Optional[float] = None
-
-    def to_state(self) -> StandState:
-        hd_value = self.hd
-        if hd_value is None:
-            if self.si25 is None:
-                raise ValueError(f"StandParams '{self.name}' requires either hd or si25.")
-            hd_value = hd_from_si(self.si25, form=self.si_form)
-
-        si_value = self.si25 if self.si25 is not None else si_from_hd(hd_value, form=self.si_form)
-
-        ba_unthinned_value = self.ba_unthinned
-        if ba_unthinned_value is None:
-            ba_unthinned_value = ba_predict(self.age, self.tpa, hd_value, self.region)
-        ba_value = self.ba if self.ba is not None else ba_unthinned_value
-        ci_value = self.ci
-        if ci_value is None and ba_value is not None and ba_unthinned_value > 0:
-            ci_value = competition_index(ba_value, ba_unthinned_value)
-        if ci_value is None:
-            ci_value = 0.0
-
-        for ev in self.disturbances:
-            if isinstance(ev, ThinningDisturbance) and not (0.0 <= ev.removal_fraction < 1.0):
-                raise ValueError(f"Thinning removal fraction must be in [0,1); got {ev.removal_fraction}")
-        sorted_events = tuple(sorted(self.disturbances, key=lambda ev: ev.age))
-
-        vol_unthinned_value = self.vol_ob_unthinned
-        if vol_unthinned_value is None:
-            vol_unthinned_value = tvob(self.age, self.tpa, hd_value, ba_unthinned_value, self.region)
-
-        vol_value = self.vol_ob
-        if vol_value is None:
-            vol_value = tvob(self.age, self.tpa, hd_value, ba_value, self.region)
-
-        return StandState(
-            age=self.age,
-            tpa=self.tpa,
-            region=self.region,
-            si25=si_value,
-            hd=hd_value,
-            ba=ba_value,
-            ba_unthinned=ba_unthinned_value,
-            ci=ci_value,
-            pending_disturbances=sorted_events,
-            tpa_unthinned=self.tpa,
-            si_form=self.si_form,
-            vol_ob=vol_value,
-            vol_ob_unthinned=vol_unthinned_value,
-            last_thin_age=self.last_thin_age,
-            last_fertilize_age=self.last_fertilize_age,
-            last_disturbance_age=self.last_disturbance_age,
-            growth_paused=self.growth_paused,
-            fertilizer_years_remaining=self.fertilizer_years_remaining,
-            fertilizer_effect_strength=self.fertilizer_effect_strength,
-            rx_fire_years_remaining=self.rx_fire_years_remaining,
-            rx_fire_severity_multiplier=self.rx_fire_severity_multiplier,
-            cumulative_cash=self.cumulative_cash,
-            cumulative_discounted_cash=self.cumulative_discounted_cash,
-            cumulative_lev=self.cumulative_lev,
-            rotation_age_assumption=self.rotation_age_assumption,
-            salvage_window=self.salvage_window,
-            years_since_replant=self.years_since_replant,
-        )
-
-
-def _advance_internal(
-    state: StandState,
-    dt: float,
-    cfg: GrowthConfig,
-) -> Tuple[StandState, float, Tuple[dict, ...], float, float]:
-    if dt <= 0:
-        raise ValueError("dt must be positive.")
-
-    a1 = state.age
-    a2 = a1 + dt
-
-    event_logs: list[dict] = []
-    new_envelopes: list[dict] = []
-    remaining_disturbances: list[BaseDisturbance] = []
-
-    def _decay_counter(value: int) -> int:
-        if value <= 0:
-            return 0
-        return max(0, value - int(round(dt)))
-
-    if state.growth_paused:
-        salvage_window = max(0, state.salvage_window - int(round(dt)))
-        fert_remaining = _decay_counter(state.fertilizer_years_remaining)
-        rx_remaining = _decay_counter(state.rx_fire_years_remaining)
-        years_since_replant = (
-            None if state.years_since_replant is None else state.years_since_replant + dt
-        )
-
-        next_state = StandState(
-            age=a2,
-            tpa=state.tpa,
-            region=state.region,
-            si25=state.si25,
-            hd=state.hd,
-            ba=state.ba,
-            ba_unthinned=state.ba_unthinned,
-            ci=state.ci,
-            pending_disturbances=tuple(),
-            tpa_unthinned=state.tpa_unthinned,
-            si_form=state.si_form,
-            vol_ob=state.vol_ob,
-            vol_ob_unthinned=state.vol_ob_unthinned,
-            active_envelopes=tuple(),
-            last_thin_age=state.last_thin_age,
-            last_fertilize_age=state.last_fertilize_age,
-            last_disturbance_age=state.last_disturbance_age,
-            growth_paused=True,
-            fertilizer_years_remaining=fert_remaining,
-            fertilizer_effect_strength=state.fertilizer_effect_strength,
-            rx_fire_years_remaining=rx_remaining,
-            rx_fire_severity_multiplier=state.rx_fire_severity_multiplier,
-            cumulative_cash=state.cumulative_cash,
-            cumulative_discounted_cash=state.cumulative_discounted_cash,
-            cumulative_lev=state.cumulative_lev,
-            rotation_age_assumption=state.rotation_age_assumption,
-            salvage_window=salvage_window,
-            years_since_replant=years_since_replant,
-        )
-        ba_val = state.ba if state.ba is not None else 0.0
-        tpa_un = state.tpa_unthinned if state.tpa_unthinned is not None else 0.0
-        ba_un = state.ba_unthinned if state.ba_unthinned is not None else 0.0
-        vol_un = state.vol_ob_unthinned if state.vol_ob_unthinned is not None else 0.0
-        return next_state, ba_val, tuple(event_logs), tpa_un, ba_un, vol_un
-
-    hd1 = state.resolved_hd()
-    si_value = state.si25 if state.si25 is not None else si_from_hd(hd1, form=state.si_form)
-    if state.fertilizer_years_remaining > 0 and state.fertilizer_effect_strength > 0.0:
-        last_age = state.last_fertilize_age if state.last_fertilize_age is not None else state.age
-        elapsed = max(0.0, state.age - last_age)
-        boost = state.fertilizer_effect_strength * exp(-elapsed / 10.0)
-        si_value += boost
-
-    tpa_unthinned_current = state.tpa_unthinned if state.tpa_unthinned is not None else state.tpa
-    ba_unthinned_current = (
-        state.ba_unthinned
-        if state.ba_unthinned is not None
-        else ba_predict(a1, tpa_unthinned_current, hd1, state.region)
-    )
-
-    tpa_actual_current = state.tpa
-    ba_actual_current = state.ba if state.ba is not None else ba_unthinned_current
-    ci_current = state.ci
-    if ci_current is None and ba_unthinned_current > 0:
-        ci_current = competition_index(ba_actual_current, ba_unthinned_current)
-
-    vol_actual_current = state.vol_ob
-    if vol_actual_current is None:
-        try:
-            vol_actual_current = tvob(a1, tpa_actual_current, hd1, ba_actual_current or 0.0, state.region)
-        except ValueError:
-            vol_actual_current = 0.0
-    vol_unthinned_current = state.vol_ob_unthinned
-    if vol_unthinned_current is None:
-        try:
-            vol_unthinned_current = tvob(a1, tpa_unthinned_current, hd1, ba_unthinned_current or 0.0, state.region)
-        except ValueError:
-            vol_unthinned_current = 0.0
-
-    disturbance_happened = False
-    catastrophic_hit = False
-    latest_disturbance_age = state.last_disturbance_age
-
-    for disturbance in state.pending_disturbances:
-        if a1 < disturbance.age <= a2 or abs(disturbance.age - a1) <= 1e-9:
-            if isinstance(disturbance, ThinningDisturbance):
-                before_tpa = tpa_actual_current
-                before_ba = ba_actual_current
-                before_vol = vol_actual_current
-                before_hd = hd1
-
-                residual = 1.0 - disturbance.removal_fraction
-                tpa_actual_current *= residual
-                ba_actual_current *= residual
-                vol_actual_current *= residual
-
-                if ba_unthinned_current > 0:
-                    ci_current = competition_index(ba_actual_current, ba_unthinned_current)
-
-                event_logs.append(
-                    {
-                        "type": "thinning",
-                        "age": disturbance.age,
-                        "tpa_before": before_tpa,
-                        "tpa_after": tpa_actual_current,
-                        "ba_before": before_ba,
-                        "ba_after": ba_actual_current,
-                        "vol_before": before_vol,
-                        "vol_after": vol_actual_current,
-                        "hd_before": before_hd,
-                        "hd_after": hd1,
-                    }
-                )
-            elif isinstance(disturbance, (FireDisturbance, WindDisturbance)):
-                before_tpa = tpa_actual_current
-                before_ba = ba_actual_current
-                before_vol = vol_actual_current
-                before_hd = hd1
-
-                from .disturbances import load_kernel, load_envelope_set
-                from pathlib import Path
-
-                dist_type = "fire" if isinstance(disturbance, FireDisturbance) else "wind"
-                kernel_path = Path(__file__).parent.parent / "data" / "disturbances" / "kernels" / f"{dist_type}_kernel.yaml"
-
-                try:
-                    kernel = load_kernel(kernel_path)
-                    severity_value = disturbance.severity
-                    if dist_type == "fire" and state.rx_fire_years_remaining > 0:
-                        severity_value = max(0.001, min(0.999, severity_value * state.rx_fire_severity_multiplier))
-                    sev_class = classify_severity(severity_value)
-
-                    post_dist = kernel.sample_losses(
-                        sev_class,
-                        ba=ba_actual_current,
-                        vol=vol_actual_current,
-                        hd=hd1,
-                        tpa=tpa_actual_current,
-                    )
-
-                    tpa_actual_current = post_dist['tpa']
-                    ba_actual_current = post_dist['ba']
-                    vol_actual_current = post_dist['vol']
-                    hd1 = post_dist['hd']
-
-                    envelope_path = Path(__file__).parent.parent / "data" / "disturbances" / "envelopes" / f"{dist_type}_envelope.yaml"
-                    try:
-                        envelope_set = load_envelope_set(envelope_path)
-                        envelope = envelope_set.get_envelope(sev_class)
-                        new_envelopes.append(
-                            {
-                                'type': dist_type,
-                                'age_occurred': a1,
-                                'envelope': envelope,
-                                'severity_class': sev_class,
-                            }
-                        )
-                    except (FileNotFoundError, ValueError, KeyError) as e_env:
-                        import warnings
-                        warnings.warn(f"Could not load {dist_type} envelope: {e_env}. Continuing without envelope effects.")
-
-                except (FileNotFoundError, ValueError, KeyError) as e:
-                    import warnings
-                    warnings.warn(f"Could not load {dist_type} kernel: {e}. Disturbance not applied.")
-
-                if ba_unthinned_current > 0:
-                    ci_current = competition_index(ba_actual_current, ba_unthinned_current)
-
-                severity_value = disturbance.severity if 'severity_value' not in locals() else severity_value
-                sev_class_logged = classify_severity(severity_value)
-                event_logs.append(
-                    {
-                        "type": dist_type,
-                        "age": disturbance.age,
-                        "severity": disturbance.severity,
-                        "severity_adjusted": severity_value,
-                        "severity_class": sev_class_logged,
-                        "tpa_before": before_tpa,
-                        "tpa_after": tpa_actual_current,
-                        "ba_before": before_ba,
-                        "ba_after": ba_actual_current,
-                        "vol_before": before_vol,
-                        "vol_after": vol_actual_current,
-                        "hd_before": before_hd,
-                        "hd_after": hd1,
-                    }
-                )
-                disturbance_happened = True
-                latest_disturbance_age = disturbance.age
-                if sev_class_logged.startswith("catastrophic"):
-                    catastrophic_hit = True
+        # Resolve the missing one using the class converters
+        if has_si and not has_hd:
+            si25 = float(init.si25)
+            hd = float(self.model.hd_from_si(si25, form="projection"))
+        elif has_hd and not has_si:
+            hd = float(init.hd)
+            si25 = float(self.model.si_from_hd(hd, form="projection"))
         else:
-            remaining_disturbances.append(disturbance)
+            # both provided: enforce consistency
+            si25 = float(init.si25)
+            hd = float(self.model.hd_from_si(si25, form="projection"))
 
-    hd2 = hd_project(a1, hd1, a2)
-    tpa2_actual = tpa_project(tpa_actual_current, si_value, a1, a2, cfg=cfg)
-    tpa2_unthinned = tpa_project(tpa_unthinned_current, si_value, a1, a2, cfg=cfg)
+        # BA default from predictors if missing
+        ba = float(init.ba) if init.ba and init.ba > 0 else float(
+            self.model.ba_predict(age=init.age, tpa=init.tpa, hd=hd, region=self.cfg.region)
+        )
+        self.state = StandState(
+            age=float(init.age),
+            tpa=float(init.tpa),
+            si25=float(si25),
+            hd=float(hd),
+            ba=float(ba),
+            ba_unthinned=float(ba),  # initially same as ba
+            tvob=float(init.tvob),
+            ci=float(init.ci),
+            fert_hd_applied=0.0,
+            fert_ba_applied=0.0,
+        )
+        # bookkeeping
+        self._fert_hd_applied = 0.0
+        self._fert_ba_applied = 0.0
+        # schedules
+        self._fert: List[FertEvent] = []
+        self._thin: List[ThinEvent] = []
 
-    ba2_unthinned = ba_project(
-        age1=a1,
-        tpa1=tpa_unthinned_current,
-        tpa2=tpa2_unthinned,
-        ba1=ba_unthinned_current,
-        hd1=hd1,
-        hd2=hd2,
-        age2=a2,
-        region=state.region,
-    )
+    # ---------------- Schedules ----------------
 
-    ci_next: Optional[float] = None
-    if ci_current is not None:
-        ci_next = ci_project(ci_current, a1, a2, state.region)
-    elif ba_unthinned_current > 0:
-        ci_est = competition_index(ba_actual_current, ba_unthinned_current)
-        ci_next = ci_project(ci_est, a1, a2, state.region)
+    def add_fertilization(self, age: float, N: float, P: float) -> None:
+        self._fert.append(FertEvent(age=age, N=N, P=P))
 
-    if ci_next is not None:
-        ba2_actual = ba_thinned(ba2_unthinned, ci_next)
-    else:
-        ba2_actual = ba2_unthinned
+    def add_thin_to_residual_ba(self, age: float, residual_ba: float, row_fraction: float = 0.25) -> None:
+        self._thin.append(ThinEvent(age=age, residual_ba=residual_ba, row_fraction=row_fraction))
 
-    if state.active_envelopes:
-        ba_increment = ba2_actual - ba_actual_current
-        combined_multiplier = 1.0
+    def _fert_cumulative_at_age(self, age: float) -> Tuple[float, float]:
+        hd_total = 0.0
+        ba_total = 0.0
+        for ev in self._fert:
+            if age >= ev.age:
+                yst = age - ev.age
+                hd_total += PMRCModel.hd_fert_delta(yst, ev.N, ev.P)
+                ba_total += PMRCModel.ba_fert_delta(yst, ev.N, ev.P)
+        return hd_total, ba_total
 
-        for env_info in state.active_envelopes:
-            years_since = a1 - env_info['age_occurred']
-            envelope = env_info['envelope']
+    # ---------------- Core step ----------------
 
-            if years_since < envelope.attack_duration_years:
-                mult = 1.0 - envelope.attack_drop
-            elif years_since < envelope.attack_duration_years + envelope.decay_years:
-                t = (years_since - envelope.attack_duration_years) / envelope.decay_years if envelope.decay_years > 0 else 0.0
-                attack_val = 1.0 - envelope.attack_drop
-                mult = attack_val + (envelope.sustain_level - attack_val) * t
+    def step(self, dt: float = 1.0) -> StandState:
+        s = self.state
+        a1, a2 = s.age, s.age + dt
+        if s.tpa <= 0.0 or s.ba <= 0.0:
+            # advance clock only; keep zeros
+            self.state = StandState(
+                age=a2,
+                tpa=0.0,
+                si25=s.si25,
+                hd=max(0.0, s.hd),
+                ba=0.0,
+                ba_unthinned=0.0,
+                tvob=0.0,
+                ci=0.0,
+                ci_anchor_age=None,
+                ci_anchor_value=None,
+                history=dict(s.history),
+                fert_hd_applied=s.fert_hd_applied,
+                fert_ba_applied=s.fert_ba_applied,
+            )
+            return self.state
+            # 1) Growth projection (unthinned baseline)
+        hd2 = self.model.hd_project(a1, s.hd, a2) if s.hd > 0 else 0.0
+
+        # --- TPA: enforce monotone non-increase ---
+        years = max(0.0, a2 - a1)
+        cand_model = self.model.tpa_project(s.tpa, s.si25, a1, a2)
+
+        if self.cfg.hold_tpa_below_asymptote and s.tpa <= self.model.min_tpa_asymptote:
+            tpa2 = s.tpa
+        else:
+            tpa2 = min(s.tpa, cand_model)
+            if self.cfg.tpa_geometric_decay:
+                cand_geom = s.tpa * (self.cfg.tpa_geometric_decay ** years)
+                tpa2 = min(tpa2, cand_geom)
+
+        # numeric floors
+        if tpa2 <= 0.0:
+            tpa2 = 1e-6
+        if hd2 <= 0.0:
+            hd2 = 1e-6
+
+
+
+        # BA projection depends on whether we are in CI recovery from a thin
+        if s.ci_anchor_age is None:
+            if s.ba <= 0.0 or s.tpa <= 0.0 or s.hd <= 0.0:
+                ba2 = 0.0
+                ba_unthinned2 = 0.0
             else:
-                mult = envelope.sustain_level
+                ba2 = self.model.ba_project(a1, s.tpa, tpa2, s.ba, s.hd, hd2, a2, self.cfg.region)
+                ba_unthinned2 = ba2  # no thinning effect
+        else:
+            # Compute unthinned counterpart then scale by projected CI
+            if tpa2 <= 0.0 or hd2 <= 0.0:
+                ba_unthinned2 = 0.0
+            else:
+                ba_unthinned2 = self.model.ba_predict(age=a2, tpa=tpa2, hd=hd2, region=self.cfg.region)
+            ci0 = s.ci_anchor_value or 0.0
+            ci_proj = self.model.ci_project(ci1=ci0, age1=s.ci_anchor_age, age2=a2, region=self.cfg.region)
+            ba2 = self.model.ba_thinned(ba_unthinned2=ba_unthinned2, ci2=ci_proj)
 
-            combined_multiplier *= mult
+        tvob2 = self.model.tvob(a2, tpa2, hd2, ba2, region=self.cfg.region)
 
-        ba_increment_modulated = ba_increment * combined_multiplier
-        ba2_actual = ba_actual_current + ba_increment_modulated
+        # 2) Apply fertilization deltas additively if any events have occurred
+        cum_hd, cum_ba = self._fert_cumulative_at_age(a2)
+        inc_hd = cum_hd - s.fert_hd_applied
+        inc_ba = cum_ba - s.fert_ba_applied
+        hd2 += inc_hd
+        ba2 += inc_ba
+        s.fert_hd_applied = cum_hd
+        s.fert_ba_applied = cum_ba
 
-    try:
-        vol2_unthinned = tvob(a2, tpa2_unthinned, hd2, ba2_unthinned, state.region)
-    except ValueError:
-        vol2_unthinned = 0.0
+    # --- disturbances: BA→TPA policy, then HD, then recompute TVOB ---
+        ba_pre = ba2  # snapshot before BA multiplier(s)
+        for ev in getattr(self, "_dist", []):
+            if a2 < ev.start_age:
+                continue
+            mult = ev.multipliers(a2, self.state)  # {'basal_area','height',...}
 
-    try:
-        vol2_actual = tvob(a2, tpa2_actual, hd2, ba2_actual, state.region)
-    except ValueError:
-        vol2_actual = 0.0
+            # BA first
+            ba2 *= mult.get("basal_area", 1.0)
 
-    all_active_envelopes = list(state.active_envelopes) + new_envelopes
+            # TPA derived from BA change
+            if self.cfg.tpa_from_ba_policy == "qmd_constant":
+                if tpa2 > 0.0 and ba_pre > 0.0:
+                    qmd_const = PMRCModel.qmd(tpa=tpa2, ba=ba_pre)
+                    tpa2 = PMRCModel.tpa_from_ba_qmd(ba=ba2, qmd_in=qmd_const)
+                else:
+                    tpa2 = 0.0
+            else:  # gamma rule
+                ratio = (ba2 / ba_pre) if ba_pre > 0 else 1.0
+                tpa2 = tpa2 * (ratio ** float(self.cfg.tpa_from_ba_gamma))
 
-    salvage_window_next = max(0, state.salvage_window - int(round(dt)))
-    if catastrophic_hit:
-        salvage_window_next = max(salvage_window_next, 5)
-    fert_remaining_next = _decay_counter(state.fertilizer_years_remaining)
-    rx_remaining_next = _decay_counter(state.rx_fire_years_remaining)
-    years_since_replant = (
-        None if state.years_since_replant is None else state.years_since_replant + dt
-    )
+            # HD multiplier
+            hd2 *= mult.get("height", 1.0)
 
-    growth_paused_next = state.growth_paused or catastrophic_hit
-    last_disturbance_age_next = state.last_disturbance_age
-    if disturbance_happened:
-        last_disturbance_age_next = latest_disturbance_age
+            # prepare for possible chained events at same step
+            ba_pre = ba2
 
-    next_state = StandState(
-        age=a2,
-        tpa=tpa2_actual,
-        region=state.region,
-        si25=si_value,
-        hd=hd2,
-        ba=ba2_actual,
-        ba_unthinned=ba2_unthinned,
-        ci=ci_next,
-        pending_disturbances=tuple(remaining_disturbances),
-        tpa_unthinned=tpa2_unthinned,
-        si_form=state.si_form,
-        vol_ob=vol2_actual,
-        vol_ob_unthinned=vol2_unthinned,
-        active_envelopes=tuple(all_active_envelopes),
-        last_thin_age=state.last_thin_age,
-        last_fertilize_age=state.last_fertilize_age,
-        last_disturbance_age=last_disturbance_age_next,
-        growth_paused=growth_paused_next,
-        fertilizer_years_remaining=fert_remaining_next,
-        fertilizer_effect_strength=state.fertilizer_effect_strength,
-        rx_fire_years_remaining=rx_remaining_next,
-        rx_fire_severity_multiplier=state.rx_fire_severity_multiplier,
-        cumulative_cash=state.cumulative_cash,
-        cumulative_discounted_cash=state.cumulative_discounted_cash,
-        cumulative_lev=state.cumulative_lev,
-        rotation_age_assumption=state.rotation_age_assumption,
-        salvage_window=salvage_window_next,
-        years_since_replant=years_since_replant,
-    )
+        tvob2 = self.model.tvob(a2, tpa2, hd2, ba2, region=self.cfg.region)
 
-    _debug_print("step next_state", next_state)
-    _debug_print("step ba_unthinned", ba2_unthinned)
-    _debug_print("step ba_result", ba2_actual)
+        
+        self.state = StandState(
+            age=a2,
+            tpa=tpa2,
+            si25=s.si25,
+            hd=hd2,
+            ba=ba2,
+            ba_unthinned=ba_unthinned2,
+            tvob=tvob2,
+            ci=s.ci,
+            ci_anchor_age=s.ci_anchor_age,
+            ci_anchor_value=s.ci_anchor_value,
+            history=dict(s.history),
+            fert_hd_applied=s.fert_hd_applied,
+            fert_ba_applied=s.fert_ba_applied,
+        )
 
-    return next_state, ba2_actual, tuple(event_logs), tpa2_unthinned, ba2_unthinned, vol2_unthinned
+        # Apply any instantaneous thin at end of step if scheduled at a2
+        self._maybe_apply_thin_at(a2)
 
-def step(state: StandState, dt: float = 1.0, cfg: GrowthConfig = GrowthConfig()) -> Tuple[StandState, float]:
-    next_state, ba_value, _, _, _, _ = _advance_internal(state, dt, cfg)
-    return next_state, ba_value
+        return self.state
+
+    # ---------------- Helpers ----------------
+
+    def run_to(self, target_age: float, dt: float = 1.0) -> StandState:
+        while self.state.age < target_age:
+            self.step(min(dt, target_age - self.state.age))
+        return self.state
+
+    def _fert_deltas_at_age(self, age: float) -> Tuple[float, float]:
+        """Sum additive deltas from all fert events with fert.age <= age."""
+        hd_delta = 0.0
+        ba_delta = 0.0
+        for ev in self._fert:
+            if age >= ev.age:
+                yst = age - ev.age
+                hd_delta += PMRCModel.hd_fert_delta(yst, ev.N, ev.P)
+                ba_delta += PMRCModel.ba_fert_delta(yst, ev.N, ev.P)
+        return hd_delta, ba_delta
+
+    def _maybe_apply_thin_at(self, age: float) -> None:
+        # Find thin events scheduled exactly at this age (float-safe compare)
+        due = [ev for ev in self._thin if abs(ev.age - age) < 1e-9]
+        if not due:
+            return
+        # Apply sequentially if multiple at same age
+        for ev in due:
+            self._apply_thin_event(ev)
+
+    def _apply_thin_event(self, ev: ThinEvent) -> None:
+        """
+        Apply thinning:
+        - Compute pre-thin BA, TPA, HD at the thin age (already the current state).
+        - If residual_ba >= prethin_ba: skip.
+        - Reduce BA to residual and compute TPA assuming constant QMD.
+        - Compute unthinned counterpart BA_ntc and CI at thin age.
+        - Record CI anchor for future recovery.
+        """
+        s = self.state
+        pre_ba, pre_tpa, pre_hd = s.ba, s.tpa, s.hd
+        if ev.residual_ba >= pre_ba:
+            # cannot thin to higher BA
+            return
+
+        post_ba = ev.residual_ba
+        # Constant QMD: assumes trees removed proportionally across diameter classes
+        qmd_pre = PMRCModel.qmd(tpa=pre_tpa, ba=pre_ba)
+        post_tpa = PMRCModel.tpa_from_ba_qmd(ba=post_ba, qmd_in=qmd_pre)
+        # Unthinned counterpart at the same age for CI
+        ba_ntc = self.model.ba_predict(age=s.age, tpa=post_tpa, hd=pre_hd, region=self.cfg.region)
+        ci0 = self.model.competition_index(ba_after=post_ba, ba_unthinned=ba_ntc)
+
+        # Set new state at thin time
+        self.state = StandState(
+            age=s.age,
+            tpa=post_tpa,
+            si25=s.si25,
+            hd=pre_hd,
+            ba=post_ba,
+            ba_unthinned=ba_ntc,  # store what it would be without thinning
+            tvob=self.model.tvob(s.age, post_tpa, pre_hd, post_ba, region=self.cfg.region),
+            ci=ci0,
+            ci_anchor_age=s.age,
+            ci_anchor_value=ci0,
+            history={**s.history, f"thin_at_{s.age:.3f}": ev.residual_ba},
+            fert_hd_applied=s.fert_hd_applied,
+            fert_ba_applied=s.fert_ba_applied,
+        )
+
+    def add_disturbance(self, event: DisturbanceEvent) -> None:
+        if not hasattr(self, "_dist"):
+            self._dist: list[DisturbanceEvent] = []
+        self._dist.append(event)
+
+    def replant(self, *, tpa: float, si25: float, initial_age: float = 1.0) -> None:
+        age_init = max(0.1, float(initial_age))
+        tpa_val = float(tpa)
+        si25_val = float(si25)
+
+        hd = float(self.model.hd_from_si(si25_val, form="projection"))
+        ba = float(self.model.ba_predict(age=age_init, tpa=tpa_val, hd=hd, region=self.cfg.region))
+        tvob = float(self.model.tvob(age_init, tpa_val, hd, ba, region=self.cfg.region))
+
+        self.state = StandState(
+            age=age_init,
+            tpa=tpa_val,
+            si25=si25_val,
+            hd=hd,
+            ba=ba,
+            ba_unthinned=ba,
+            tvob=tvob,
+            ci=0.0,
+            ci_anchor_age=None,             # clear competition anchors
+            ci_anchor_value=None,
+            history={},
+            fert_hd_applied=0.0,
+            fert_ba_applied=0.0,
+        )
+
+        # clear management and disturbance histories
+        self._fert = []
+        self._thin = []
+        if hasattr(self, "_dist"):
+            self._dist = []
+
+        # optional: guard large first-step dt compounding if you track last-advance
+        if hasattr(self, "_last_age_advanced"):
+            self._last_age_advanced = age_init
 
 
-def step_with_log(
-    state: StandState, dt: float = 1.0, cfg: GrowthConfig = GrowthConfig()
-) -> Tuple[StandState, float, Tuple[dict, ...], float, float, float]:
-    return _advance_internal(state, dt, cfg)
 
+    # ---------------- Convenience ----------------
 
-# -------------------- Subproblem 5: Convenience multi-step runner --------------------
-
-def run_horizon(state: StandState, years: float, dt: float = 1.0) -> list[Tuple[StandState, float]]:
-    """Project a stand forward for a given horizon.
-
-    Returns a list of (state_t, BA_t) for each completed step. Includes the terminal state only.
-    """
-    if years <= 0:
-        raise ValueError("years must be positive.")
-    if abs(dt - 1.0) > 1e-9:
-        raise ValueError("run_horizon currently assumes dt == 1.0 year.")
-    steps = int(round(years / dt))
-    out: list[Tuple[StandState, float]] = []
-    s = state
-    for _ in range(steps):
-        s, ba = step(s, dt=dt)
-        out.append((s, ba))
-        _debug_print("run_horizon step_state", s)
-        _debug_print("run_horizon step_ba", ba)
-    return out
-
-
-# -------------------- Defaults and simple test harness --------------------
-EXAMPLE_STANDS: dict[str, StandParams] = {
-    "ucp_baseline": StandParams(
-        name="ucp_baseline",
-        age=1.0,
-        tpa=600.0,
-        region=Region.UCP,
-        si25=60.0,
-        disturbances=(ThinningDisturbance(age=10.0, removal_fraction=0.15),),
-    ),
-    "case_1_low_si": StandParams(
-        name="case_1_low_si",
-        age=1.0,
-        tpa=505.0,
-        region=Region.UCP,
-        si25=60.0,
-    ),
-    "case_1_high_si": StandParams(
-        name="case_1_high_si",
-        age=1.0,
-        tpa=505.0,
-        region=Region.UCP,
-        si25=80.0,
-    ),
-    "fire_moderate": StandParams(
-        name="fire_moderate",
-        age=1.0,
-        tpa=600.0,
-        region=Region.UCP,
-        si25=60.0,
-        disturbances=(
-            FireDisturbance(age=15.0, severity=0.35),  # Moderate fire at year 15
-        ),
-    ),
-    "fire_severe": StandParams(
-        name="fire_severe",
-        age=1.0,
-        tpa=600.0,
-        region=Region.UCP,
-        si25=60.0,
-        disturbances=(
-            FireDisturbance(age=12.0, severity=0.65),  # Severe fire at year 12
-        ),
-    ),
-    "wind_event": StandParams(
-        name="wind_event",
-        age=1.0,
-        tpa=600.0,
-        region=Region.UCP,
-        si25=60.0,
-        disturbances=(
-            WindDisturbance(age=18.0, severity=0.45),  # Wind event at year 18
-        ),
-    ),
-    "multi_disturbance": StandParams(
-        name="multi_disturbance",
-        age=1.0,
-        tpa=600.0,
-        region=Region.UCP,
-        si25=60.0,
-        disturbances=(
-            ThinningDisturbance(age=8.0, removal_fraction=0.20),
-            FireDisturbance(age=15.0, severity=0.30),
-            ThinningDisturbance(age=22.0, removal_fraction=0.15),
-        ),
-    ),
-}
-
+    def summary(self) -> str:
+        s = self.state
+        ba_diff = s.ba_unthinned - s.ba
+        return (
+            f"Age {s.age:.1f} | HD={s.hd:.2f} ft | TPA={s.tpa:.1f} | "
+            f"BA={s.ba:.2f} ft²/ac | BA_unthinned={s.ba_unthinned:.2f} ft²/ac (Δ{ba_diff:+.2f}) | "
+            f"TVOB={s.tvob:.1f} | CI={s.ci_anchor_value or 0.0:.3f}"
+        )
 
 if __name__ == "__main__":
-    params = EXAMPLE_STANDS["ucp_baseline"]
-    s0 = params.to_state()
-    traj = run_horizon(s0, years=10, dt=1.0)
-    # Print last state for quick verification
-    sT, baT = traj[-1]
-    print({"age": sT.age, "tpa": round(sT.tpa, 1), "hd": round(sT.hd or 0.0, 2), "ba": round(baT, 2)})
+    # # Instantiate two stands with different configs
+    s1 = Stand(StandState(age=1, tpa=600, si25=60, hd=0, ba=0), StandConfig(region="ucp", tpa_geometric_decay=0.99))
+
+    # Schedule
+    s1.run_to(60)
+    print(s1.summary())
