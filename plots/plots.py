@@ -1,606 +1,669 @@
-"""Matplotlib plots returned as figures. No Streamlit calls.
-
-growth curves, ADSR overlays, severity histograms, value traces.
-"""
+"""Matplotlib plots for kernels, envelopes, and growth trajectories."""
 
 from __future__ import annotations
-
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Dict, Iterable, Mapping, Sequence, Tuple, List, Literal
 
+import yaml
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.patches import Rectangle
-import yaml
 
-from dataclasses import replace
+# Growth model imports from your codebase
+from core.growth import Stand, StandConfig, StandState, ThinEvent
+from core.pmrc_model import PMRCModel
+from core.disturbances import make_fire_event, make_wind_event, get_severity
+from core.env import StandMgmtEnv, EnvConfig
 
-from core import growth
+ACTION_LABELS = [
+    "noop",
+    "thin_40",
+    "thin_60",
+    "fert_n200_p1",
+    "harvest",
+    "plant_600_si60",
+    "salvage_0p3",
+    "rxfire",
+]
 
+ACTION_LABELS = [
+    "noop",
+    "thin_40",
+    "thin_60",
+    "fert_n200_p1",
+    "harvest",
+    "plant_600_si60",
+    "salvage_0p3",
+    "rxfire",
+]
 
-def _iterable_values(value: Any) -> list[float]:
-    if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
-        return [float(x) for x in value]
-    return []
+# -------------------------- small helpers --------------------------
 
+def _is_iter(x: Any) -> bool:
+    return isinstance(x, Iterable) and not isinstance(x, (str, bytes))
 
-def _midpoint(value: Any, fallback: float = 0.0) -> float:
-    items = _iterable_values(value)
-    if items:
-        return sum(items) / len(items)
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return fallback
+def _five(vals: Sequence[float]) -> Tuple[float, float, float, float, float]:
+    if len(vals) != 5:
+        raise ValueError("Expected five-number summary [min, q1, median, q3, max].")
+    lo, q1, med, q3, hi = map(float, vals)
+    # monotone sanitize
+    q1 = max(lo, q1)
+    med = max(q1, med)
+    q3 = max(med, q3)
+    hi = max(q3, hi)
+    return lo, q1, med, q3, hi
 
+def _palette(n: int) -> List[str]:
+    base = ["#2ecc71", "#3498db", "#9b59b6", "#e67e22", "#e74c3c", "#16a085", "#8e44ad", "#d35400", "#c0392b"]
+    return [base[i % len(base)] for i in range(n)]
 
-def _select(value: Any, mode: str, fallback: float = 0.0) -> float:
-    items = _iterable_values(value)
-    if items:
-        if mode == "min":
-            return min(items)
-        if mode == "max":
-            return max(items)
-        return sum(items) / len(items)
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return fallback
+def _sev_label(k: str) -> str:
+    # "moderate_20_50" -> "Moderate 20-50%"
+    parts = k.split("_")
+    if len(parts) >= 3 and parts[-2].isdigit() and parts[-1].isdigit():
+        head = " ".join(parts[:-2]).title()
+        return f"{head} {parts[-2]}-{parts[-1]}%"
+    return k.replace("_", " ").title()
 
-
-def _adsr_envelope(
-    envelope_cfg: Mapping[str, Any],
-    total_years: int,
-    floor: float | None,
-    ceiling: float | None,
-    mode: str = "mid",
-    metric: str = "basal_area",
-    is_additive: bool = False,
-) -> list[float]:
-    """Extract ADSR envelope from [min, max] format."""
-    
-    # Try old ADSR format first for backward compatibility
-    adsr = envelope_cfg.get("ADSR", {})
-    if adsr:
-        attack_drop = _select(adsr.get("attack_drop"), mode, 0.0)
-        attack_years = int(max(_select(adsr.get("attack_duration_years", 1), mode, 1), 0))
-        decay_years = int(max(_select(adsr.get("decay_years", 0), mode, 0), 0))
-        sustain_level = _select(adsr.get("sustain_level"), mode, 1.0)
-        release_years = int(max(_select(adsr.get("release_years", 0), mode, 0), 0))
-        sustain_years_param = adsr.get("sustain_years")
-        if sustain_years_param is not None:
-            sustain_years = int(max(_select(sustain_years_param, mode, 0), 0))
-        else:
-            sustain_years = max(total_years - (attack_years + decay_years + release_years), 0)
-        
-        attack_value = 1.0 - attack_drop
-        sustain_value = sustain_level
+def adsr_envelope(cfg: Mapping[str, Any], total_years: int, metric: str, additive: bool) -> List[float]:
+    # New envelopes format with attack/decay/sustain/release blocks of [min, max]
+    def mid(key: str) -> float:
+        rng = cfg.get(key, {}).get(metric, [0.0, 0.0])
+        if _is_iter(rng) and len(rng) >= 2:
+            return float(rng[0] + rng[1]) / 2.0
+        return float(rng)
+    attack_drop = mid("attack")
+    decay_drop = mid("decay")
+    sustain_drop = mid("sustain")
+    release_drop = mid("release")
+    if additive:
+        a_val = 1.0 + attack_drop
+        d_val = 1.0 + decay_drop
+        s_val = 1.0 + sustain_drop
+        r_val = 1.0 + release_drop
     else:
-        # New format: attack/decay/sustain/release phases with [min, max] per metric
-        duration = envelope_cfg.get("duration", total_years)
-        
-        # Extract [min, max] for each phase
-        attack_range = envelope_cfg.get("attack", {}).get(metric, [0.0, 0.0])
-        decay_range = envelope_cfg.get("decay", {}).get(metric, [0.0, 0.0])
-        sustain_range = envelope_cfg.get("sustain", {}).get(metric, [0.0, 0.0])
-        release_range = envelope_cfg.get("release", {}).get(metric, [0.0, 0.0])
-        
-        # Take midpoint of ranges for plotting
-        if isinstance(attack_range, (list, tuple)) and len(attack_range) >= 2:
-            attack_drop = (attack_range[0] + attack_range[1]) / 2
-        else:
-            attack_drop = 0.0
-            
-        if isinstance(decay_range, (list, tuple)) and len(decay_range) >= 2:
-            decay_drop = (decay_range[0] + decay_range[1]) / 2
-        else:
-            decay_drop = attack_drop
-            
-        if isinstance(sustain_range, (list, tuple)) and len(sustain_range) >= 2:
-            sustain_drop = (sustain_range[0] + sustain_range[1]) / 2
-        else:
-            sustain_drop = 0.0
-            
-        if isinstance(release_range, (list, tuple)) and len(release_range) >= 2:
-            release_drop = (release_range[0] + release_range[1]) / 2
-        else:
-            release_drop = 0.0
-        
-        # Convert to multiplier values
-        # For positive effect_direction (thinning): add (e.g., 0.10 -> 1.10 = 10% boost)
-        # For negative effect_direction (fire/wind): subtract (e.g., 0.10 -> 0.90 = 10% reduction)
-        if is_additive:
-            attack_value = 1.0 + attack_drop
-            decay_value = 1.0 + decay_drop
-            sustain_value = 1.0 + sustain_drop
-            release_value = 1.0 + release_drop
-        else:
-            attack_value = 1.0 - attack_drop
-            decay_value = 1.0 - decay_drop
-            sustain_value = 1.0 - sustain_drop
-            release_value = 1.0 - release_drop
-        
-        # Estimate phase durations based on total duration
-        attack_years = max(1, duration // 6)
-        decay_years = max(2, duration // 4)
-        release_years = max(1, duration // 6)
-        sustain_years = max(0, duration - attack_years - decay_years - release_years)
+        a_val = 1.0 - attack_drop
+        d_val = 1.0 - decay_drop
+        s_val = 1.0 - sustain_drop
+        r_val = 1.0 - release_drop
+    dur = int(cfg.get("duration", total_years))
+    atk = max(1, dur // 6)
+    dec = max(2, dur // 4)
+    rel = max(1, dur // 6)
+    sus = max(0, dur - atk - dec - rel)
+    y: List[float] = []
+    y += [a_val] * atk
+    if dec:
+        for i in range(1, dec + 1):
+            t = i / dec
+            y.append(a_val + (d_val - a_val) * t)
+    y += [s_val] * sus
+    if rel:
+        for i in range(1, rel + 1):
+            t = i / rel
+            y.append(s_val + (1.0 - s_val) * t)
+    if len(y) < total_years:
+        y += [y[-1] if y else 1.0] * (total_years - len(y))
+    return y[:total_years]
 
-    series: list[float] = []
 
-    # Attack phase
-    for _ in range(attack_years):
-        series.append(attack_value)
+# -------------------------- 1) kernel boxplots --------------------------
 
-    # Decay phase
-    if decay_years:
-        for step in range(1, decay_years + 1):
-            t = step / decay_years
-            if 'decay_value' in locals():
-                series.append(attack_value + (decay_value - attack_value) * t)
+def plot_kernel_boxplots(*, kernel_paths: Sequence[str | Path]) -> plt.Figure:
+    """
+    Box and whisker plots per severity per metric for each kernel file.
+    Assumes YAML format:
+      sev_classes:
+        <class>:
+          immediate_loss_range:
+            basal_area: [min,q1,med,q3,max]
+            height:     [min,q1,med,q3,max]
+            volume:     [min,q1,med,q3,max]
+    Values are fractional losses in [0,1].
+    """
+    kernel_paths = [Path(p) for p in kernel_paths]
+    if not kernel_paths:
+        raise ValueError("Provide at least one kernel_path.")
+
+    # Load one kernel to define metrics
+    with kernel_paths[0].open("r", encoding="utf-8") as h:
+        first = yaml.safe_load(h)
+    sev0 = first["sev_classes"]
+    metrics = sorted(next(iter(sev0.values()))["immediate_loss_range"].keys())
+
+    fig, axes = plt.subplots(len(kernel_paths), len(metrics), figsize=(4 * len(metrics), 3.5 * len(kernel_paths)), squeeze=False)
+    for row, path in enumerate(kernel_paths):
+        with path.open("r", encoding="utf-8") as h:
+            data = yaml.safe_load(h)
+        sev = data["sev_classes"]
+        classes = list(sev.keys())
+        colors = _palette(len(classes))
+        y_positions = list(range(len(classes)))
+        for col, metric in enumerate(metrics):
+            ax = axes[row][col]
+            for i, name in enumerate(classes):
+                values = sev[name]["immediate_loss_range"][metric]
+                lo, q1, med, q3, hi = _five(values)
+                y = y_positions[i]
+                color = colors[i]
+                ax.hlines(y, lo, hi, color=color, linewidth=1.2)
+                ax.add_patch(Rectangle((q1, y - 0.3), max(q3 - q1, 0.0), 0.6, facecolor=color, alpha=0.35, edgecolor="black", linewidth=1.0))
+                ax.vlines(med, y - 0.3, y + 0.3, color=color, linewidth=1.4)
+                ax.scatter([lo, hi], [y, y], color=color, s=15, zorder=3)
+            ax.set_title(f"{metric.replace('_', ' ').title()} loss")
+            ax.set_xlabel("Fraction")
+            ax.set_xlim(0, 1)
+            ax.grid(axis="x", linestyle="--", linewidth=0.5, alpha=0.5)
+            if col == 0:
+                ax.set_yticks(y_positions)
+                ax.set_yticklabels([_sev_label(c) for c in classes])
             else:
-                series.append(attack_value + (sustain_value - attack_value) * t)
+                ax.set_yticks([])
+        axes[row][0].set_ylabel(path.stem.replace("_", " ").title())
+    fig.suptitle("Disturbance Kernels")
+    fig.tight_layout()
+    return fig
 
-    # Sustain phase
-    for _ in range(sustain_years):
-        series.append(sustain_value)
 
-    # Release phase - return to baseline (1.0 = no effect)
-    if release_years:
-        for step in range(1, release_years + 1):
-            t = step / release_years
-            series.append(sustain_value + (1.0 - sustain_value) * t)
-
-    if len(series) < total_years:
-        series.extend([series[-1] if series else 1.0] * (total_years - len(series)))
-    elif len(series) > total_years:
-        series = series[:total_years]
-
-    if floor is not None:
-        series = [max(floor, v) for v in series]
-    if ceiling is not None:
-        series = [min(ceiling, v) for v in series]
-
-    return series
-
+# -------------------------- 2) envelope shaded lines --------------------------
 
 def plot_disturbance_envelope(
     envelope_path: str | Path,
     *,
     envelope_key: str | Sequence[str] | None = None,
-    metric: str = "basal_area",
+    dpi: int = 300,
+    invert: bool = False,  # show 1−p when True for subtractive envelopes
 ) -> plt.Figure:
-    """
-    Plot the ADSR-style disturbance envelope defined in the provided YAML file.
-
-    Args:
-        envelope_path: Path to the envelope YAML definition.
-        envelope_key: Optional specific envelope key (e.g., scorch class) to draw.
-
-    Returns:
-        Matplotlib Figure containing the envelope curves.
-    """
-
     path = Path(envelope_path)
     with path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle)
-
     if not isinstance(data, Mapping):
         raise ValueError(f"Envelope definition {path} is empty or invalid")
 
-    defaults = data.get("defaults", {})
-    floor = defaults.get("floor")
-    floor = float(floor) if floor is not None else None
-    ceiling = defaults.get("ceiling")
-    ceiling = float(ceiling) if ceiling is not None else None
+    metadata = data.get("metadata", {})
+    is_additive = metadata.get("effect_direction") == "positive"
 
-    metric_block = data.get("metrics") or data.get("envelopes_by_metric")
-    if metric_block:
-        if metric not in metric_block:
-            available = ", ".join(sorted(metric_block))
-            raise ValueError(f"Metric '{metric}' not found. Available: {available}")
-        envelopes: Mapping[str, Mapping[str, Any]] = metric_block[metric]
-    else:
-        envelopes = (
-            data.get("envelopes_by_class")
-            or data.get("envelopes_by_scorch_class")
-            or data.get("sev_classes")  # Also check for sev_classes
-            or data.get("envelopes")
-            or {}
-        )
+    # Gather envelopes (severity classes)
+    envelopes: Mapping[str, Mapping[str, Any]] = (
+        data.get("sev_classes")
+        or data.get("envelopes")
+        or data.get("envelopes_by_class")
+        or {}
+    )
     if not envelopes:
         raise ValueError(f"No envelopes found in {path}")
 
-    selected_keys: list[str]
+    # Optional filtering by key(s)
     if envelope_key:
-        if isinstance(envelope_key, str):
-            selected_keys = [
-                part.strip()
-                for chunk in envelope_key.split(":")
-                for part in chunk.split(",")
-                if part.strip()
-            ]
-        else:
-            selected_keys = [str(k).strip() for k in envelope_key if str(k).strip()]
-        filtered = {k: envelopes[k] for k in selected_keys if k in envelopes}
-        if not filtered:
-            raise ValueError(f"Requested classes {selected_keys} not found in envelope definition")
-        envelopes = filtered
-    else:
-        # Plot ALL severity classes
-        selected_keys = list(envelopes.keys())
-        envelopes = {k: envelopes[k] for k in selected_keys}
+        keys = [envelope_key] if isinstance(envelope_key, str) else list(envelope_key)
+        envelopes = {k: envelopes[k] for k in keys if k in envelopes}
+        if not envelopes:
+            raise ValueError("Requested envelope_key(s) not found in file")
 
-    fig, ax = plt.subplots()
-    metadata = data.get("metadata", {})
-    
-    # Use same color palette as kernel plots
-    base_palette = [
-        "#2ecc71",  # green
-        "#3498db",  # blue
-        "#9b59b6",  # purple
-        "#e67e22",  # orange
-        "#e74c3c",  # red
-    ]
-    colors = [base_palette[idx % len(base_palette)] for idx in range(len(envelopes))]
-    
-    # Check if this is an additive envelope (thinning)
-    is_additive = metadata.get("effect_direction") == "positive"
+    # Plot each metric in its own row
+    metrics = ["basal_area", "height", "volume"]
+    n_rows = len(metrics)
+    fig, axes = plt.subplots(n_rows, 1, figsize=(7, 2.8 * n_rows), dpi=dpi, sharex=True)
+    if n_rows == 1:
+        axes = [axes]
 
-    for idx, (key, cfg) in enumerate(envelopes.items()):
-        cap_year = cfg.get("cap_after_year") or cfg.get("duration") or defaults.get("cap_after_year")
-        if cap_year is None:
-            # Fallback calculation for old format
-            adsr = cfg.get("ADSR", {})
-            cap_year = (
-                (adsr.get("attack_duration_years") or 1)
-                + (adsr.get("decay_years") or 0)
-                + (adsr.get("release_years") or 0)
-                + 2
-            )
-        cap_year = int(cap_year)
+    colors = _palette(len(envelopes))
 
-        series_mid = _adsr_envelope(cfg, cap_year, floor, ceiling, mode="mid", metric=metric, is_additive=is_additive)
-        years = list(range(len(series_mid) + 1))
-        
-        # For additive envelopes, show as positive growth increase
-        # For subtractive envelopes, show as reduction (1 - multiplier)
-        if is_additive:
-            effects = [0.0] + [max(0.0, value - 1.0) for value in series_mid]  # Show increase
-        else:
-            effects = [0.0] + [max(0.0, 1.0 - value) for value in series_mid]  # Show reduction
+    for m_idx, metric in enumerate(metrics):
+        ax = axes[m_idx]
+        for idx, (key, cfg) in enumerate(envelopes.items()):
+            duration = int(cfg.get("duration", 10))
+            series = adsr_envelope(cfg, duration, metric, is_additive)  # midpoints timeline
+            # optional inversion for subtractive envelopes only
+            plot_vals = series if (is_additive or not invert) else [1.0 - v for v in series]
+            years = list(range(len(plot_vals)))  # left-aligned at t=0
+            color = colors[idx]
+            ax.plot(years, plot_vals, color=color, linewidth=1.8, label=key.replace("_", " ").title())
+            ax.fill_between(years, plot_vals, alpha=0.15, color=color)
 
-        # Format label with percentage range
-        label = key.replace("_", " ").title()
-        # Extract percentage range from key (e.g., "moderate_20_50" -> "Moderate 20-50%")
-        import re
-        match = re.search(r'(\d+)_(\d+)$', key)
-        if match:
-            low, high = match.groups()
-            # For thinning (additive), just show percentage range
-            # For fire/wind (subtractive), show severity class + percentage
-            if is_additive:
-                label = f"{low}-{high}%"
-            else:
-                # Get the base name without numbers
-                base_name = re.sub(r'_\d+_\d+$', '', key).replace("_", " ").title()
-                label = f"{base_name} {low}-{high}%"
-        
-        color = colors[idx]
-        line, = ax.plot(years, effects, marker="o", label=label, color=color)
-        ax.fill_between(years, effects, alpha=0.2, color=color)
+        ax.set_title(metric.replace("_", " ").title(), loc="left", fontsize=11, fontweight="bold")
+        ax.set_ylabel("Multiplier")
+        # Tight to y-axis: remove left padding
+        ax.set_xlim(left=0)
+        ax.margins(x=0)  # no x padding
+        ax.grid(True, linestyle="--", alpha=0.4)
+        if m_idx == n_rows - 1:
+            ax.set_xlabel("Years After Disturbance")
 
-    ax.set_xlabel("Years After Disturbance")
-    
-    # Set appropriate ylabel and title based on envelope type
-    if is_additive:
-        ax.set_ylabel("Growth Enhancement (multiplier - 1)")
-        title = f"{metadata.get('disturbance', 'Disturbance').title()} Envelope (Additive)"
-    else:
-        ax.set_ylabel("Growth Reduction (1 - multiplier)")
-        title = f"{metadata.get('disturbance', 'Disturbance').title()} Envelope (Subtractive)"
-    
-    if metric:
-        title += f" – {metric.replace('_', ' ').title()}"
-    ax.set_title(title)
-    ax.set_ylim(0, 1)  # Always maintain 0 to 1 scale
-    ax.legend()
-    fig.tight_layout()
-
+    axes[0].legend(fontsize=8, loc="upper right", frameon=False)
+    fig.suptitle(f"{metadata.get('disturbance', 'Disturbance').title()} Envelope", x=0.01, ha="left", fontsize=13)
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
     return fig
 
 
-def _collect_metrics(classes: Mapping[str, Mapping[str, Any]]) -> list[str]:
-    metrics: set[str] = set()
-    for cfg in classes.values():
-        range_map = cfg.get("immediate_loss_range", {})
-        metrics.update(range_map.keys())
-    return sorted(metrics)
 
 
-def _format_severity_label(name: str) -> str:
-    parts = name.split("_")
-    if len(parts) >= 3 and all(part.replace(".", "", 1).isdigit() for part in parts[1:]):
-        head = parts[0].replace("-", " ").title()
-        range_part = "-".join(parts[1:])
-        return f"{head} {range_part}%"
-    return name.replace("_", " ").title()
 
+# -------------------------- 3) growth trajectory with PCT --------------------------
 
-def plot_disturbance_kernel(kernel_path: str | Path) -> plt.Figure:
+def plot_growth_example(*, years: float = 40.0, dt: float = 1.0) -> plt.Figure:
     """
-    Visualise five-number loss summaries per severity class from a disturbance kernel.
-
-    Each metric is rendered with whiskers (min/max), an interquartile box (q1–q3),
-    and a median bar so classes remain visually distinct. Modulators defined in
-    the YAML are ignored because they depend on scenario-specific context.
+    Ordinary growth with si25=60, initial_tpa=600, and a pre-commercial thinning at age 10.
+    PCT approximated as a residual BA target at age 10. Adjust as needed.
     """
+    model = PMRCModel(region="ucp")
+    # Resolve initial HD and BA from SI25 and TPA
+    si25 = 60.0
+    age0 = 1.0
+    tpa0 = 600.0
+    hd0 = model.hd_from_si(si25, form="projection")
+    ba0 = model.ba_predict(age=age0, tpa=tpa0, hd=hd0, region="ucp")
 
-    path = Path(kernel_path)
-    with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
+    stand = Stand(
+        init=StandState(age=age0, tpa=tpa0, si25=si25, hd=hd0, ba=ba0),
+        cfg=StandConfig(region="ucp", tpa_geometric_decay=0.99),
+    )
 
-    if not isinstance(data, Mapping):
-        raise ValueError(f"Kernel definition {path} is empty or invalid")
+    #stand.add_thin_to_residual_ba(age=10.0, residual_ba=max(10.0, 0.8 * ba0))
 
-    sev_classes: Mapping[str, Mapping[str, Any]] = data.get("sev_classes", {})
-    if not sev_classes:
-        raise ValueError(f"No severity classes found in {path}")
+    target_age = age0 + years
+    ages, tpas, hds, bas, vols = [stand.state.age], [stand.state.tpa], [stand.state.hd], [stand.state.ba], [0.0]
+    
+    # Step until we reach target age
+    while stand.state.age < target_age:
+        remaining = target_age - stand.state.age
+        step_size = min(dt, remaining)
+        if step_size <= 0:
+            break
+        s = stand.step(step_size)
+        ages.append(s.age)
+        tpas.append(s.tpa)
+        hds.append(s.hd)
+        bas.append(s.ba)
+        vols.append(s.tvob)
 
-    class_items = list(sev_classes.items())
-    metrics = _collect_metrics(sev_classes)
-    if not metrics:
-        raise ValueError(f"No immediate_loss_range metrics in {path}")
-
-    fig, axes = plt.subplots(1, len(metrics), sharey=True, figsize=(4 * len(metrics), 3.5))
-    if isinstance(axes, Axes):
-        axes = [axes]
-    elif isinstance(axes, Iterable):
-        axes = list(axes)
-    else:
-        axes = [axes]
-
-    class_labels = [_format_severity_label(name) for name, _ in class_items]
-    y_positions = list(range(len(class_items)))
-
-    base_palette = [
-        "#2ecc71",  # green
-        "#3498db",  # blue
-        "#9b59b6",  # purple
-        "#e67e22",  # orange
-        "#e74c3c",  # red
-    ]
-    palette = [base_palette[idx % len(base_palette)] for idx in range(len(class_items))]
-    box_height = 0.6
-    half_height = box_height / 2
-
-    for ax, metric in zip(axes, metrics):
-        for idx, (name, cfg) in enumerate(class_items):
-            range_map = cfg.get("immediate_loss_range", {})
-            value = range_map.get(metric)
-            if value is None:
-                continue
-            if isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
-                values = [float(x) for x in value]
-            else:
-                values = [float(value)]
-
-            if len(values) != 5:
-                raise ValueError(
-                    f"Expected five-number loss distribution for '{metric}' in severity '{name}'"
-                )
-
-            low, q1, median, q3, high = values
-            low = max(0.0, low)
-            q1 = max(low, q1)
-            median = max(q1, median)
-            q3 = max(median, q3)
-            high = max(q3, high)
-
-            y = y_positions[idx]
-            color = palette[idx]
-
-            ax.hlines(y, low, high, color=color, linewidth=1.2)
-            ax.add_patch(
-                Rectangle(
-                    (q1, y - half_height),
-                    max(q3 - q1, 0.0),
-                    box_height,
-                    facecolor=color,
-                    alpha=0.35,
-                    edgecolor="black",
-                    linewidth=1.2,
-                )
-            )
-            ax.vlines(median, y - half_height, y + half_height, color=color, linewidth=1.4)
-            ax.scatter([low, high], [y, y], color=color, s=15, zorder=3)
-
-        ax.set_title(metric.replace("_", " ").title())
-        ax.set_xlabel("Fractional Loss")
-        ax.set_xlim(0, 1)
-        ax.grid(axis="x", linestyle="--", linewidth=0.5, alpha=0.5)
-
-    axes[0].set_yticks(y_positions)
-    axes[0].set_yticklabels(class_labels)
-    axes[0].invert_yaxis()
-    axes[0].set_ylabel("Severity Class")
-
-    metadata = data.get("metadata", {})
-    title = f"{metadata.get('disturbance', 'Disturbance').title()} Kernel Loss Ranges"
-    fig.suptitle(title)
+    fig, axes = plt.subplots(4, 1, sharex=True, figsize=(8, 10))
+    axes[0].plot(ages, tpas, marker="o", markersize=3, label="TPA")
+    axes[0].set_ylabel("TPA")
+    axes[1].plot(ages, hds, marker="o", markersize=3, color="#1f77b4", label="HD")
+    axes[1].set_ylabel("HD (ft)")
+    axes[2].plot(ages, bas, marker="o", markersize=3, color="#e67e22", label="BA")
+    axes[2].set_ylabel("BA (ft²/ac)")
+    axes[3].plot(ages, vols, marker="o", markersize=3, color="#2c3e50", label="TVOB")
+    axes[3].set_ylabel("TVOB (ft³/ac)")
+    axes[3].set_xlabel("Age (years)")
+    for ax in axes:
+        ax.grid(True, linestyle="--", alpha=0.4)
+    # Mark PCT
+    # for ax in axes:
+    #     ax.axvline(10.0, color="green", linestyle=":", alpha=0.4)
+    fig.suptitle("PMRC growth")
     fig.tight_layout()
-    fig.subplots_adjust(top=0.85)
-
     return fig
 
-
-def plot_growth_trajectory(
-    stand_name: str = "ucp_baseline",
+def plot_disturbance_comparison(
     *,
-    years: float = 10.0,
+    disturbance: Literal["fire", "wind"] = "fire",
+    start_age: float = 15.0,
+    severity: float | None = None,   # if None, draw via seeded RNG
+    seed: int = 123,
+    years: float = 25.0,
     dt: float = 1.0,
-    compare_unthinned: bool = False,
+    si25: float = 60.0,
+    tpa0: float = 600.0,
+    age0: float = 1.0,
+    region: str = "ucp",
 ) -> plt.Figure:
-    """
-    Run the PMRC growth model trajectory and plot key stand variables over time.
-    """
+    """Same stand twice: with and without a disturbance. Shade the difference."""
+    model = PMRCModel(region=region)
+    hd0 = model.hd_from_si(si25, form="projection")
+    ba0 = model.ba_predict(age=age0, tpa=tpa0, hd=hd0, region=region)
 
-    params = growth.EXAMPLE_STANDS.get(stand_name)
-    if params is None:
-        available = ", ".join(sorted(growth.EXAMPLE_STANDS))
-        raise ValueError(f"Unknown stand '{stand_name}'. Available stands: {available}")
+    base_cfg = StandConfig(region=region, tpa_geometric_decay=0.99)
+    s_base = Stand(StandState(age=age0, tpa=tpa0, si25=si25, hd=hd0, ba=ba0), base_cfg)
+    s_dist = Stand(StandState(age=age0, tpa=tpa0, si25=si25, hd=hd0, ba=ba0), base_cfg)
+
+    sev = float(severity) if severity is not None else get_severity(seed=seed)
+    event = make_fire_event(start_age=start_age, severity=sev, seed=seed) if disturbance == "fire" \
+            else make_wind_event(start_age=start_age, severity=sev, seed=seed)
+    s_dist.add_disturbance(event)
 
     steps = int(round(years / dt))
-    initial_state = params.to_state()
-
-    ages = [initial_state.age]
-    tpas = [initial_state.tpa]
-    hds = [initial_state.hd if initial_state.hd is not None else initial_state.resolved_hd()]
-    basals = [
-        initial_state.ba
-        if initial_state.ba is not None
-        else growth.ba_predict(initial_state.age, initial_state.tpa, hds[-1], initial_state.region)
-    ]
-    vols = [initial_state.vol_ob if initial_state.vol_ob is not None else 0.0]
-    unth_tpas = [initial_state.tpa_unthinned if initial_state.tpa_unthinned is not None else initial_state.tpa]
-    unth_basals = [initial_state.ba_unthinned if initial_state.ba_unthinned is not None else basals[-1]]
-    unth_vols = [initial_state.vol_ob_unthinned if initial_state.vol_ob_unthinned is not None else vols[-1]]
-    event_records: list[dict] = []
-    state = initial_state
-    for _ in range(steps):
-        next_state, ba_val, events, tpa_unth, ba_unth, vol_unth = growth.step_with_log(state, dt=dt)
-        ages.append(next_state.age)
-        tpas.append(next_state.tpa)
-        hds.append(next_state.hd if next_state.hd is not None else next_state.resolved_hd())
-        basals.append(next_state.ba if next_state.ba is not None else ba_val)
-        vols.append(next_state.vol_ob if next_state.vol_ob is not None else vols[-1])
-        unth_tpas.append(tpa_unth if tpa_unth is not None else unth_tpas[-1])
-        unth_basals.append(ba_unth if ba_unth is not None else unth_basals[-1])
-        unth_vols.append(vol_unth if vol_unth is not None else unth_vols[-1])
-        event_records.extend(events)
-        state = next_state
-
-    # Always compare with undisturbed trajectory
-    compare_state = None
-    compare_meta = None
-    if True:  # Always enabled
-        compare_params = replace(params, disturbances=())
-        compare_state = compare_params.to_state()
-        comp_state = compare_state
-        comp_ages = [comp_state.age]
-        comp_tpas = [comp_state.tpa]
-        comp_hds = [comp_state.hd if comp_state.hd is not None else comp_state.resolved_hd()]
-        comp_basals = [
-            comp_state.ba
-            if comp_state.ba is not None
-            else growth.ba_predict(comp_state.age, comp_state.tpa, comp_hds[-1], comp_state.region)
-        ]
-        comp_vols = [comp_state.vol_ob if comp_state.vol_ob is not None else 0.0]
+    def simulate(st: Stand):
+        ages, tpa, hd, ba, vol = [st.state.age], [st.state.tpa], [st.state.hd], [st.state.ba], [st.state.tvob]
         for _ in range(steps):
-            comp_state, comp_ba = growth.step(comp_state, dt=dt)
-            comp_ages.append(comp_state.age)
-            comp_tpas.append(comp_state.tpa)
-            comp_hds.append(comp_state.hd if comp_state.hd is not None else comp_state.resolved_hd())
-            if comp_ba is not None:
-                comp_basals.append(comp_ba)
-            elif comp_state.ba is not None:
-                comp_basals.append(comp_state.ba)
-            else:
-                comp_basals.append(
-                    growth.ba_predict(comp_state.age, comp_state.tpa, comp_hds[-1], comp_state.region)
-                )
-            comp_vols.append(comp_state.vol_ob if comp_state.vol_ob is not None else comp_vols[-1])
-        compare_meta = (comp_ages, comp_tpas, comp_hds, comp_basals, comp_vols)
+            ns = st.step(min(dt, years - (ages[-1] - age0)))
+            ages.append(ns.age); tpa.append(ns.tpa); hd.append(ns.hd); ba.append(ns.ba); vol.append(ns.tvob)
+        return ages, tpa, hd, ba, vol
 
-    # Extract comparison data
-    comp_ages, comp_tpas, comp_hds, comp_basals, comp_vols = compare_meta
+    a0, t0, h0, b0, v0 = simulate(s_base)
+    a1, t1, h1, b1, v1 = simulate(s_dist)
 
-    # Simple linear interpolation - no complex stair-stepping
-    tpa_plot_ages, tpa_plot_values = ages, tpas
-    ba_plot_ages, ba_plot_values = ages, basals
-    vol_plot_ages, vol_plot_values = ages, vols
+    fig, axes = plt.subplots(4, 1, sharex=True, figsize=(8, 10), dpi=300)
+    series = [
+        ("TPA", t0, t1, None),
+        ("Dominant height (ft)", h0, h1, "#1f77b4"),
+        ("Basal area (ft²/ac)", b0, b1, "#e67e22"),
+        ("TVOB (ft³/ac)", v0, v1, "#2c3e50"),
+    ]
+    for ax, (ylab, y_base, y_dist, color) in zip(axes, series):
+        ax.plot(a0, y_base, label="Undisturbed", linestyle="--", alpha=0.7)
+        ax.plot(a1, y_dist, label=f"{disturbance.title()} (seed={seed}, sev={sev:.2f})", color=color)
+        # shaded difference (absolute band)
+        y_lo = [min(u, d) for u, d in zip(y_base, y_dist)]
+        y_hi = [max(u, d) for u, d in zip(y_base, y_dist)]
+        ax.fill_between(a0, y_lo, y_hi, color=color if color else "#555555", alpha=0.15, linewidth=0)
+        ax.set_ylabel(ylab)
+        ax.grid(True, linestyle="--", alpha=0.4)
 
-    fig, axes = plt.subplots(4, 1, sharex=True, figsize=(8, 12))
-    
-    # Plot TPA
-    axes[0].plot(tpa_plot_ages, tpa_plot_values, marker="o", markersize=3, label="Managed")
-    axes[0].plot(comp_ages, comp_tpas, marker="o", markersize=3, linestyle="--", alpha=0.6, label="Undisturbed")
-    axes[0].set_ylabel("Trees per Acre")
-    axes[0].set_title(f"Growth Trajectory: {stand_name}")
-    axes[0].grid(True, linestyle="--", alpha=0.4)
     axes[0].legend()
-    
-    # Plot HD
-    axes[1].plot(ages, hds, marker="o", markersize=3, color="#1f77b4", label="Managed")
-    axes[1].plot(comp_ages, comp_hds, marker="o", markersize=3, linestyle="--", color="#1f77b4", alpha=0.6, label="Undisturbed")
-    axes[1].set_ylabel("Dominant Height (ft)")
-    axes[1].grid(True, linestyle="--", alpha=0.4)
-    axes[1].legend()
-    
-    # Plot BA
-    axes[2].plot(ba_plot_ages, ba_plot_values, marker="o", markersize=3, color="#e67e22", label="Managed")
-    axes[2].plot(comp_ages, comp_basals, marker="o", markersize=3, linestyle="--", color="#e67e22", alpha=0.6, label="Undisturbed")
-    axes[2].set_ylabel("Basal Area (ft²/ac)")
-    axes[2].grid(True, linestyle="--", alpha=0.4)
-    axes[2].legend()
-    
-    # Plot Volume
-    axes[3].plot(vol_plot_ages, vol_plot_values, marker="s", markersize=3, color="#2c3e50", label="Managed")
-    axes[3].plot(comp_ages, comp_vols, marker="s", markersize=3, linestyle="--", color="#2c3e50", alpha=0.6, label="Undisturbed")
-    axes[3].set_ylabel("Volume OB (ft³/ac)")
-    axes[3].set_xlabel("Age (years)")
-    axes[3].grid(True, linestyle="--", alpha=0.4)
-    axes[3].legend()
-    
-    # Add disturbance markers and collect legend info
-    disturbance_colors = {"thinning": "green", "fire": "red", "wind": "purple"}
-    disturbance_markers = {"thinning": "^", "fire": "*", "wind": "D"}
-    disturbance_labels = {"thinning": "Thinning", "fire": "Fire", "wind": "Wind"}
-    
-    # Track which disturbance types we've seen for the legend
-    seen_disturbances = set()
-    
-    for ev in event_records:
-        dist_type = ev.get("type", "thinning")
-        seen_disturbances.add(dist_type)
-        color = disturbance_colors.get(dist_type, "gray")
-        marker = disturbance_markers.get(dist_type, "o")
-        age = ev["age"]
-        
-        for ax in axes:
-            ymin, ymax = ax.get_ylim()
-            ax.axvline(x=age, color=color, linestyle=":", alpha=0.3, linewidth=1)
-            ax.plot(age, ymax * 0.95, marker=marker, color=color, markersize=8, 
-                   markeredgecolor='black', markeredgewidth=0.5, zorder=10)
-    
-    # Add disturbance markers to legend on first subplot
-    if seen_disturbances:
-        from matplotlib.lines import Line2D
-        handles, labels = axes[0].get_legend_handles_labels()
-        
-        # Add disturbance marker handles
-        for dist_type in sorted(seen_disturbances):
-            color = disturbance_colors.get(dist_type, "gray")
-            marker = disturbance_markers.get(dist_type, "o")
-            label = disturbance_labels.get(dist_type, dist_type.title())
-            handles.append(Line2D([0], [0], marker=marker, color='w', 
-                                markerfacecolor=color, markeredgecolor='black',
-                                markersize=8, label=label))
-            labels.append(label)
-        
-        axes[0].legend(handles, labels)
-
+    axes[-1].set_xlabel("Age (years)")
+    fig.suptitle(f"Disturbance comparison – {disturbance.title()} at age {start_age}", x=0.01, ha="left")
     fig.tight_layout()
     return fig
 
+
+def plot_policy_rollout(
+    *,
+    model_path: str | Path,
+    steps: int = 200,
+    deterministic: bool = True,
+    env_overrides: Mapping[str, Any] | None = None,
+) -> plt.Figure:
+    """Visualise a learned policy's rollout on :class:`StandMgmtEnv`.
+
+    Args:
+        model_path: Path to a Stable Baselines3 policy (e.g. PPO ``.zip`` file).
+        steps: Maximum number of environment steps to simulate.
+        deterministic: Whether to request deterministic actions from the policy.
+        env_overrides: Optional overrides for :class:`EnvConfig` parameters.
+
+    Returns:
+        Matplotlib figure summarising state trajectories, rewards, and actions.
+    """
+
+    try:
+        from stable_baselines3 import PPO
+    except ImportError as exc:  # pragma: no cover - optional dependency
+        raise RuntimeError("Stable Baselines3 is required for policy rollout plots.") from exc
+
+    model_path = Path(model_path)
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model not found: {model_path}")
+
+    overrides = dict(env_overrides or {})
+    env_cfg = EnvConfig(**overrides)
+    env = StandMgmtEnv(env_cfg)
+
+    try:
+        model = PPO.load(str(model_path), env=env)
+    except Exception as exc:  # pragma: no cover - SB3 loading errors
+        env.close()
+        raise RuntimeError(f"Failed to load model from {model_path}: {exc}") from exc
+
+    obs, _ = env.reset()
+    if env.stand is None:
+        env.close()
+        raise RuntimeError("Environment failed to initialise stand state.")
+
+    segments: list[dict[str, list[float]]] = [
+        {
+            "ages": [float(env.stand.state.age)],
+            "tpa": [float(env.stand.state.tpa)],
+            "ba": [float(env.stand.state.ba)],
+            "tvob": [float(env.stand.state.tvob)],
+            "rewards": [],
+            "cashflows": [],
+            "actions": [],
+        }
+    ]
+
+    for _ in range(max(1, int(steps))):
+        action_raw, _ = model.predict(obs, deterministic=deterministic)
+        action_id = int(np.asarray(action_raw).item())
+        obs_next, reward, done, _, info = env.step(action_id)
+
+        next_age = float(env.stand.state.age)
+        next_tpa = float(env.stand.state.tpa)
+        next_ba = float(env.stand.state.ba)
+        next_vol = float(env.stand.state.tvob)
+
+        if next_age + 1e-6 < segments[-1]["ages"][-1]:
+            segments.append(
+                {
+                    "ages": [next_age],
+                    "tpa": [next_tpa],
+                    "ba": [next_ba],
+                    "tvob": [next_vol],
+                    "rewards": [],
+                    "cashflows": [],
+                    "actions": [],
+                }
+            )
+        seg = segments[-1]
+        seg["ages"].append(next_age)
+        seg["tpa"].append(next_tpa)
+        seg["ba"].append(next_ba)
+        seg["tvob"].append(next_vol)
+        seg["rewards"].append(float(reward))
+        seg["cashflows"].append(float(info.get("cashflow_now") or 0.0))
+        seg["actions"].append(action_id)
+
+        obs = obs_next
+        if done:
+            break
+
+    env.close()
+
+    if not any(seg["actions"] for seg in segments):
+        raise RuntimeError("Rollout produced no transitions; check the model and environment configuration.")
+
+    return _render_rollout(segments, title_prefix=f"Policy rollout – {model_path.name}")
+
+
+def _render_rollout(
+    segments: Sequence[dict[str, list[float]]],
+    *,
+    title_prefix: str,
+) -> plt.Figure:
+    if not segments:
+        raise ValueError("No rollout segments to plot.")
+    segment = segments[0]
+
+    ages_arr = np.asarray(segment["ages"], dtype=float)
+    tpa_arr = np.asarray(segment["tpa"], dtype=float)
+    ba_arr = np.asarray(segment["ba"], dtype=float)
+    vol_arr = np.asarray(segment["tvob"], dtype=float)
+    rewards_arr = np.asarray(segment["rewards"], dtype=float)
+    cash_arr = np.asarray(segment["cashflows"], dtype=float)
+    actions = segment["actions"]
+    step_ages = ages_arr[1:] if ages_arr.size > 1 else np.array([], dtype=float)
+
+    total_steps = len(actions)
+    total_reward = float(rewards_arr.sum())
+    total_cash = float(cash_arr.sum())
+
+    fig, axes = plt.subplots(5, 1, figsize=(10, 12), sharex=False)
+    action_colors = _palette(len(ACTION_LABELS))
+
+    def _set_limits(ax, data):
+        if data.size == 0:
+            return
+        pad = max(1e-6, 0.05 * (data.max() - data.min() if data.max() != data.min() else data.max() or 1.0))
+        ax.set_ylim(data.min() - pad, data.max() + pad)
+
+    axes[0].plot(ages_arr, tpa_arr, color="#2ecc71", linewidth=2.0)
+    axes[0].set_ylabel("TPA")
+    _set_limits(axes[0], tpa_arr)
+
+    axes[1].plot(ages_arr, ba_arr, color="#e67e22", linewidth=2.0)
+    axes[1].set_ylabel("Basal area\n(ft²/ac)")
+    _set_limits(axes[1], ba_arr)
+
+    axes[2].plot(ages_arr, vol_arr, color="#34495e", linewidth=2.0)
+    axes[2].set_ylabel("TVOB\n(ft³/ac)")
+    _set_limits(axes[2], vol_arr)
+
+    axes[3].set_ylabel("Reward / Cashflow")
+    if step_ages.size:
+        axes[3].plot(step_ages, rewards_arr, color="#3498db", linewidth=1.3, label="Reward")
+        cumulative_rewards = np.cumsum(rewards_arr)
+        axes[3].plot(step_ages, cumulative_rewards, color="#1abc9c", linestyle="--", linewidth=1.2, label="Cumulative reward")
+        if np.any(cash_arr):
+            axes[3].plot(step_ages, cash_arr, color="#e74c3c", linestyle=":", linewidth=1.1, label="Cashflow")
+        _set_limits(axes[3], rewards_arr if np.any(rewards_arr) else cumulative_rewards)
+        axes[3].legend(loc="upper left", frameon=False)
+
+    axes[4].set_ylabel("Action")
+    axes[4].set_xlabel("Age (years)")
+    axes[4].set_yticks(range(len(ACTION_LABELS)))
+    axes[4].set_yticklabels(ACTION_LABELS)
+    if step_ages.size:
+        axes[4].plot(step_ages, actions, color="#8e44ad", linewidth=1.0)
+        for age, act in zip(step_ages, actions):
+            axes[4].scatter(age, act, color=action_colors[act % len(action_colors)], s=45, zorder=3)
+        axes[4].set_ylim(-0.5, len(ACTION_LABELS) - 0.5)
+
+    axes[4].set_ylabel("Action")
+    axes[4].set_xlabel("Age (years)")
+    for ax in axes:
+        ax.grid(True, linestyle="--", alpha=0.4)
+
+    summary = f"Steps: {total_steps} | Total reward: {total_reward:.1f} | Total cashflow: {total_cash:.1f}"
+    fig.suptitle(f"{title_prefix}\n{summary}", fontsize=13)
+    fig.tight_layout()
+    return fig
+
+
+def plot_fixed_policy(
+    *,
+    steps: int = 200,
+    rotation_years: float = 25.0,
+    thin_years: Sequence[float] = (10.0,),
+    fert_years: Sequence[float] = (12.0, 20.0),
+    env_overrides: Mapping[str, Any] | None = None,
+) -> plt.Figure:
+    overrides = dict(env_overrides or {})
+    env_cfg = EnvConfig(**overrides)
+    env = StandMgmtEnv(env_cfg)
+
+    obs, _ = env.reset()
+    if env.stand is None:
+        env.close()
+        raise RuntimeError("Environment failed to initialise stand state.")
+
+    rotation_years = float(rotation_years)
+    thin_schedule = sorted(float(v) for v in thin_years)
+    fert_schedule = sorted(float(v) for v in fert_years)
+    thin_done = {year: False for year in thin_schedule}
+    fert_done = {year: False for year in fert_schedule}
+    rotation_base = float(env.stand.state.age)
+
+    segments: list[dict[str, list[float]]] = [
+        {
+            "ages": [float(env.stand.state.age)],
+            "tpa": [float(env.stand.state.tpa)],
+            "ba": [float(env.stand.state.ba)],
+            "tvob": [float(env.stand.state.tvob)],
+            "rewards": [],
+            "cashflows": [],
+            "actions": [],
+        }
+    ]
+
+    for _ in range(max(1, int(steps))):
+        age = float(env.stand.state.age)
+        offset = age - rotation_base
+
+        if env.manager.harvested:
+            action_id = 5
+        elif offset >= rotation_years:
+            action_id = 4
+        else:
+            action_id = 0
+            for idx, year in enumerate(thin_schedule):
+                if not thin_done[year] and offset >= year:
+                    action_id = 1 if idx == 0 else 2
+                    thin_done[year] = True
+                    break
+            if action_id == 0:
+                for year in fert_schedule:
+                    if not fert_done[year] and offset >= year:
+                        action_id = 3
+                        fert_done[year] = True
+                        break
+
+        obs_next, reward, done, _, info = env.step(action_id)
+
+        next_age = float(env.stand.state.age)
+        next_tpa = float(env.stand.state.tpa)
+        next_ba = float(env.stand.state.ba)
+        next_vol = float(env.stand.state.tvob)
+        if next_age + 1e-6 < segments[-1]["ages"][-1]:
+            segments.append(
+                {
+                    "ages": [next_age],
+                    "tpa": [next_tpa],
+                    "ba": [next_ba],
+                    "tvob": [next_vol],
+                    "rewards": [],
+                    "cashflows": [],
+                    "actions": [],
+                }
+            )
+        seg = segments[-1]
+        seg["ages"].append(next_age)
+        seg["tpa"].append(next_tpa)
+        seg["ba"].append(next_ba)
+        seg["tvob"].append(next_vol)
+        seg["rewards"].append(float(reward))
+        seg["cashflows"].append(float(info.get("cashflow_now") or 0.0))
+        seg["actions"].append(action_id)
+
+        if action_id == 5 and info.get("plant_ok"):
+            rotation_base = float(env.stand.state.age)
+            thin_done = {year: False for year in thin_schedule}
+            fert_done = {year: False for year in fert_schedule}
+
+        obs = obs_next
+        if done:
+            break
+
+    env.close()
+
+    if not any(seg["actions"] for seg in segments):
+        raise RuntimeError("Fixed policy produced no transitions; check configuration.")
+    return _render_rollout(segments, title_prefix="Fixed policy rollout")
+
+# -------------------------- unified interface --------------------------
+
 def plot_interface(**kwargs: Any) -> plt.Figure:
-    plot_name = kwargs.pop("plot", None)
-
-    if plot_name in {"disturbance_envelope", "envelope"}:
-        return plot_disturbance_envelope(**kwargs)
-    if plot_name in {"disturbance_kernel", "kernel"}:
-        return plot_disturbance_kernel(**kwargs)
-    if plot_name in {"growth", "growth_trajectory"}:
-        return plot_growth_trajectory(**kwargs)
-
-    raise ValueError(f"Unknown plot: {plot_name}")
+    """
+    Dispatcher:
+      plot='kernel'         + kernel_paths=[...]
+      plot='envelope'       + envelope_path=...
+      plot='growth'         + years, dt
+      plot='compare'        + disturbance comparison kwargs
+      plot='policy_rollout' + model_path, steps, env_overrides
+    """
+    kind = kwargs.pop("plot", None)
+    if kind == "kernel":
+        paths = kwargs.get("kernel_paths") or ([kwargs["kernel_path"]] if "kernel_path" in kwargs else None)
+        if not paths:
+            raise ValueError("kernel_paths or kernel_path required")
+        return plot_kernel_boxplots(kernel_paths=paths)
+    if kind == "envelope":
+        # pass envelope_path and invert directly
+        return plot_disturbance_envelope(
+            envelope_path=kwargs["envelope_path"],
+            envelope_key=kwargs.get("envelope_key"),
+            dpi=kwargs.get("dpi", 300),
+            invert=kwargs.get("invert", False),
+        )
+    if kind == "growth":
+        return plot_growth_example(years=kwargs.get("years", 40.0), dt=kwargs.get("dt", 1.0))
+    if kind == "compare":
+        return plot_disturbance_comparison(**kwargs)
+    if kind == "policy_rollout":
+        env_overrides = kwargs.pop("env_overrides", None)
+        return plot_policy_rollout(env_overrides=env_overrides, **kwargs)
+    if kind == "fixed_policy":
+        env_overrides = kwargs.pop("env_overrides", None)
+        return plot_fixed_policy(env_overrides=env_overrides, **kwargs)
+    raise ValueError("Unknown plot type")

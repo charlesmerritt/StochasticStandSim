@@ -1,395 +1,285 @@
-"""Dataclasses representing deterministic disturbances."""
-
+# core/disturbances.py
 from __future__ import annotations
-
+from typing import Dict, Tuple, Mapping, Literal, Any, Optional
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Mapping
-
-import yaml
+import yaml, random, math
 
 from .rng import rng
 
+Stage = Literal["attack", "decay", "sustain", "release"]
+Metric = Literal["basal_area", "volume", "height"]
 
-def random_severity(seed: int | None = None) -> float:
-    """Generate random severity in (0, 1) exclusive range.
-    
-    Returns a value that cannot be exactly 0 or 1, suitable for
-    discretization into severity classes.
-    """
+# ------------------- Utils -------------------
+
+def get_severity(seed: int | None = None) -> float:
+    """Random severity in (0,1), never exactly 0 or 1."""
     val = rng(seed)
-    # Ensure we never return exactly 0.0 or 1.0
-    if val == 0.0:
-        val = 0.001
-    elif val == 1.0:
-        val = 0.999
-    return val
+    if val <= 0.0: return 0.001
+    if val >= 1.0: return 0.999
+    return round(val, 3)
 
+def _tup(x: Any) -> Tuple[float, float]:
+    lo, hi = x
+    return float(lo), float(hi)
 
-# ==================== Kernel and Envelope Structures ====================
-
-@dataclass(frozen=True)
-class ADSREnvelope:
-    """ADSR (Attack-Decay-Sustain-Release) envelope for post-disturbance BA growth.
-    
-    Defines how BA GROWTH INCREMENT multipliers evolve over time after a disturbance.
-    These multipliers affect the per-year CHANGE in BA, not the total BA.
-    
-    Example: If normal BA growth is +2 ft²/ac/year and multiplier is 0.5,
-    then actual growth that year is +1 ft²/ac/year.
-    
-    Values represent multipliers applied to BA growth increments (1.0 = normal growth).
-    """
-    attack_drop: float  # Initial drop in growth rate (0-1)
-    attack_duration_years: int  # Years at reduced growth rate
-    decay_years: int  # Years to recover from attack to sustain
-    sustain_level: float  # Sustained growth rate multiplier (can be >1.0 for compensatory growth)
-    sustain_years: int = 0  # Years at sustain level (0 = indefinite)
-    release_years: int = 0  # Years to return to 1.0x baseline growth
-    
-    def __post_init__(self) -> None:
-        """Validate envelope parameters."""
-        if not (0.0 <= self.attack_drop <= 1.0):
-            raise ValueError(f"attack_drop must be in [0, 1], got {self.attack_drop}")
-        if self.sustain_level < 0.0:
-            raise ValueError(f"sustain_level must be >= 0, got {self.sustain_level}")
-        if self.attack_duration_years < 0:
-            raise ValueError(f"attack_duration_years must be >= 0, got {self.attack_duration_years}")
-
+# ------------------- Envelope -------------------
 
 @dataclass(frozen=True)
-class DisturbanceKernel:
-    """Kernel defining immediate losses per severity class across multiple metrics.
-    
-    Each severity class has a 5-number distribution (min, q1, median, q3, max)
-    for immediate loss percentage in stand metrics:
-    - basal_area: BA loss percentage
-    - volume: Volume loss percentage  
-    - height: Height loss percentage
-    - density: TPA (trees per acre) loss percentage
-    """
-    sev_classes: Mapping[str, Mapping[str, tuple[float, float, float, float, float]]]  # class_name -> {metric -> 5-number}
-    
-    def get_loss_distribution(self, severity_class: str, metric: str) -> tuple[float, float, float, float, float]:
-        """Get the 5-number loss distribution for a severity class and metric.
-        
-        Args:
-            severity_class: Name of severity class (e.g., 'moderate_25_50')
-            metric: Metric name ('basal_area', 'volume', 'height', 'density')
-            
-        Returns:
-            (min, q1, median, q3, max) tuple representing loss percentage distribution
-        """
-        if severity_class not in self.sev_classes:
-            raise ValueError(f"Severity class '{severity_class}' not found in kernel")
-        class_data = self.sev_classes[severity_class]
-        if metric not in class_data:
-            raise ValueError(f"Metric '{metric}' not found for class '{severity_class}'")
-        return class_data[metric]
-    
-    def get_all_losses(self, severity_class: str) -> dict[str, tuple[float, float, float, float, float]]:
-        """Get all loss distributions for a severity class.
-        
-        Returns:
-            Dict mapping metric names to their 5-number loss distributions
-        """
-        if severity_class not in self.sev_classes:
-            raise ValueError(f"Severity class '{severity_class}' not found in kernel")
-        return dict(self.sev_classes[severity_class])
-    
-    def sample_ba_loss(self, severity_class: str, metric: str = "basal_area") -> tuple[float, float, float, float, float]:
-        """Backward compatibility method. Use get_loss_distribution instead."""
-        return self.get_loss_distribution(severity_class, metric)
-    
-    def sample_losses(self, severity_class: str, ba: float, vol: float, hd: float, tpa: float, seed: int | None = None) -> dict[str, float]:
-        """Sample random losses from kernel distributions and apply to stand metrics.
-        
-        Samples from a triangular distribution using the 5-number summary,
-        approximating the underlying distribution.
-        
-        Args:
-            severity_class: Severity class name
-            ba: Current basal area
-            vol: Current volume
-            hd: Current height
-            tpa: Current trees per acre
-            seed: Random seed for reproducibility (optional)
-            
-        Returns:
-            Dict with post-disturbance values: {'ba': ..., 'vol': ..., 'hd': ..., 'tpa': ...}
-        """
-        import random
-        if seed is not None:
-            random.seed(seed)
-        
-        all_losses = self.get_all_losses(severity_class)
-        
-        result = {}
-        if 'basal_area' in all_losses:
-            min_loss, q1, median, q3, max_loss = all_losses['basal_area']
-            # Sample from triangular distribution (min, mode=median, max)
-            sampled_loss = random.triangular(min_loss, max_loss, median)
-            result['ba'] = ba * (1 - sampled_loss)
-        else:
-            result['ba'] = ba
-            
-        if 'volume' in all_losses:
-            min_loss, q1, median, q3, max_loss = all_losses['volume']
-            sampled_loss = random.triangular(min_loss, max_loss, median)
-            result['vol'] = vol * (1 - sampled_loss)
-        else:
-            result['vol'] = vol
-            
-        if 'height' in all_losses:
-            min_loss, q1, median, q3, max_loss = all_losses['height']
-            sampled_loss = random.triangular(min_loss, max_loss, median)
-            result['hd'] = hd * (1 - sampled_loss)
-        else:
-            result['hd'] = hd
-            
-        if 'density' in all_losses:
-            min_loss, q1, median, q3, max_loss = all_losses['density']
-            sampled_loss = random.triangular(min_loss, max_loss, median)
-            result['tpa'] = tpa * (1 - sampled_loss)
-        else:
-            result['tpa'] = tpa
-            
-        return result
-    
-    def apply_median_losses(self, severity_class: str, ba: float, vol: float, hd: float, tpa: float) -> dict[str, float]:
-        """Apply median losses from kernel to stand metrics. (Deprecated: use sample_losses)
-        
-        Args:
-            severity_class: Severity class name
-            ba: Current basal area
-            vol: Current volume
-            hd: Current height
-            tpa: Current trees per acre
-            
-        Returns:
-            Dict with post-disturbance values: {'ba': ..., 'vol': ..., 'hd': ..., 'tpa': ...}
-        """
-        all_losses = self.get_all_losses(severity_class)
-        
-        result = {}
-        if 'basal_area' in all_losses:
-            result['ba'] = ba * (1 - all_losses['basal_area'][2])
-        else:
-            result['ba'] = ba
-            
-        if 'volume' in all_losses:
-            result['vol'] = vol * (1 - all_losses['volume'][2])
-        else:
-            result['vol'] = vol
-            
-        if 'height' in all_losses:
-            result['hd'] = hd * (1 - all_losses['height'][2])
-        else:
-            result['hd'] = hd
-            
-        if 'density' in all_losses:
-            result['tpa'] = tpa * (1 - all_losses['density'][2])
-        else:
-            result['tpa'] = tpa
-            
-        return result
-
+class StageRanges:
+    basal_area: Tuple[float, float]
+    volume: Tuple[float, float]
+    height: Tuple[float, float]
+    def __str__(self) -> str:
+        return f"BA{self.basal_area}  Vol{self.volume}  Ht{self.height}"
 
 @dataclass(frozen=True)
-class EnvelopeSet:
-    """Set of ADSR envelopes for different severity classes.
-    
-    Maps severity class names to their corresponding ADSR envelopes.
-    Envelopes define multipliers that affect the INCREMENTAL BA GROWTH per year,
-    NOT the total BA. They impede or enhance the per-year delta in basal area.
+class SeverityClass:
+    desc: str
+    attack: StageRanges
+    decay: StageRanges
+    sustain: StageRanges
+    release: StageRanges
+    duration: int
+    def range_for(self, stage: Stage, metric: Metric) -> Tuple[float, float]:
+        return getattr(getattr(self, stage), metric)
+
+class Envelope:
     """
-    envelopes: Mapping[str, ADSREnvelope]
-    metric: str = "basal_area"  # These envelopes apply to BA growth increments only
-    
-    def get_envelope(self, severity_class: str) -> ADSREnvelope:
-        """Get the ADSR envelope for a severity class."""
-        if severity_class not in self.envelopes:
-            raise ValueError(f"Severity class '{severity_class}' not found in envelope set")
-        return self.envelopes[severity_class]
-
-
-@dataclass(frozen=True)
-class BaseDisturbance:
-    """Base class for disturbances with age."""
-    age: float
-
-
-@dataclass(frozen=True)
-class ThinningDisturbance(BaseDisturbance):
-    """Thinning disturbance with explicit removal fraction."""
-    removal_fraction: float
-
-
-@dataclass(frozen=True)
-class FireDisturbance(BaseDisturbance):
-    """Fire disturbance with severity in (0, 1).
-    
-    Severity is discretized into classes. Load kernel/envelope separately from YAML.
+    YAML-backed base. Provides:
+      - Attribute access by prefix: env.mild -> 'mild_0_10'
+      - Mapping access: env['moderate_20_50']
+      - Helpers: .range(), .keys(), .classes()
+      - Meta: metadata/defaults/modulators available at .meta
     """
-    severity: float
-    
-    def __post_init__(self) -> None:
-        """Validate severity is in valid range."""
-        if not (0.0 < self.severity < 1.0):
-            raise ValueError(f"Severity must be in (0, 1), got {self.severity}")
-    
-    def get_severity_class(self) -> str:
-        """Discretize continuous severity into a severity class.
-        
-        5 classes: mild (0-10%), low (10-20%), moderate (20-50%), severe (50-80%), catastrophic (80-100%)
-        """
-        if self.severity < 0.10:
-            return "mild_0_10"
-        elif self.severity < 0.20:
-            return "low_10_20"
-        elif self.severity < 0.50:
-            return "moderate_20_50"
-        elif self.severity < 0.80:
-            return "severe_50_80"
-        else:
-            return "catastrophic_80_100"
+    def __init__(self, sev_classes: Mapping[str, SeverityClass], meta: Optional[Dict[str, Any]] = None):
+        self._sev_classes: Dict[str, SeverityClass] = dict(sev_classes)
+        self.meta: Dict[str, Any] = dict(meta or {})
+        self._prefix_index: Dict[str, str] = {}
+        for k in self._sev_classes:
+            prefix = k.split("_", 1)[0]
+            self._prefix_index.setdefault(prefix, k)
 
+    def __getitem__(self, key: str) -> SeverityClass:
+        return self._sev_classes[key]
 
-@dataclass(frozen=True)
-class WindDisturbance(BaseDisturbance):
-    """Wind disturbance with severity in (0, 1).
-    
-    Severity is discretized into classes. Load kernel/envelope separately from YAML.
-    """
-    severity: float
-    
-    def __post_init__(self) -> None:
-        """Validate severity is in valid range."""
-        if not (0.0 < self.severity < 1.0):
-            raise ValueError(f"Severity must be in (0, 1), got {self.severity}")
-    
-    def get_severity_class(self) -> str:
-        """Discretize continuous severity into a severity class.
-        
-        5 classes: mild (0-10%), low (10-20%), moderate (20-50%), severe (50-80%), catastrophic (80-100%)
-        """
-        if self.severity < 0.10:
-            return "mild_0_10"
-        elif self.severity < 0.20:
-            return "low_10_20"
-        elif self.severity < 0.50:
-            return "moderate_20_50"
-        elif self.severity < 0.80:
-            return "severe_50_80"
-        else:
-            return "catastrophic_80_100"
+    def keys(self):
+        return self._sev_classes.keys()
 
+    def classes(self):
+        return self._sev_classes.values()
 
-Disturbance = BaseDisturbance
+    def range(self, severity_key_or_prefix: str, stage: Stage, metric: Metric) -> Tuple[float, float]:
+        key = self._prefix_index.get(severity_key_or_prefix, severity_key_or_prefix)
+        return self._sev_classes[key].range_for(stage, metric)
 
+    def sample(self, severity_key_or_prefix: str, stage: Stage, metric: Metric) -> float:
+        lo, hi = self.range(severity_key_or_prefix, stage, metric)
+        return round(random.uniform(lo, hi), 3)
 
-# ==================== Loaders ====================
+    def __getattr__(self, name: str) -> Any:
+        if name in self._prefix_index:
+            return self._sev_classes[self._prefix_index[name]]
+        raise AttributeError(name)
 
-def load_kernel(path: str | Path) -> DisturbanceKernel:
-    """Load a disturbance kernel from a YAML file.
-    
-    Args:
-        path: Path to kernel YAML file
-        
-    Returns:
-        DisturbanceKernel with severity classes and loss distributions
-    """
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    
-    if not isinstance(data, Mapping):
-        raise ValueError(f"Kernel file {path} is empty or invalid")
-    
-    sev_classes_raw = data.get("sev_classes", {})
-    if not sev_classes_raw:
-        raise ValueError(f"No severity classes found in {path}")
-    
-    # Parse severity classes into proper structure
-    sev_classes = {}
-    for class_name, class_data in sev_classes_raw.items():
-        loss_ranges = class_data.get("immediate_loss_range", {})
-        parsed_ranges = {}
-        for metric, values in loss_ranges.items():
-            if isinstance(values, (list, tuple)) and len(values) == 5:
-                parsed_ranges[metric] = tuple(float(v) for v in values)
-            else:
-                raise ValueError(
-                    f"Expected 5-number distribution for '{metric}' in class '{class_name}', got {values}"
-                )
-        sev_classes[class_name] = parsed_ranges
-    
-    return DisturbanceKernel(sev_classes=sev_classes)
+def _to_stage_ranges(d: Dict[str, Any]) -> StageRanges:
+    return StageRanges(
+        basal_area=_tup(d["basal_area"]),
+        volume=_tup(d["volume"]),
+        height=_tup(d["height"]),
+    )
 
-
-def load_envelope_set(path: str | Path, metric: str = "basal_area") -> EnvelopeSet:
-    """Load a set of ADSR envelopes from a YAML file.
-    
-    Args:
-        path: Path to envelope YAML file
-        metric: Metric to extract (default: basal_area)
-        
-    Returns:
-        EnvelopeSet with severity class envelopes
-    """
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    
-    if not isinstance(data, Mapping):
-        raise ValueError(f"Envelope file {path} is empty or invalid")
-    
-    # Try different possible structures
-    metric_block = data.get("metrics") or data.get("envelopes_by_metric")
-    if metric_block and metric in metric_block:
-        envelopes_raw = metric_block[metric]
-    else:
-        envelopes_raw = (
-            data.get("envelopes_by_class")
-            or data.get("envelopes_by_scorch_class")
-            or data.get("sev_classes")  # Also check for sev_classes
-            or data.get("envelopes")
-            or {}
+def _load_envelope_from_path(path: str) -> tuple[Dict[str, SeverityClass], Dict[str, Any]]:
+    with open(path, "r") as f:
+        raw = yaml.safe_load(f)
+    sev: Dict[str, SeverityClass] = {}
+    for name, sc in raw["sev_classes"].items():
+        sev[name] = SeverityClass(
+            desc=sc["desc"],
+            attack=_to_stage_ranges(sc["attack"]),
+            decay=_to_stage_ranges(sc["decay"]),
+            sustain=_to_stage_ranges(sc["sustain"]),
+            release=_to_stage_ranges(sc["release"]),
+            duration=int(sc["duration"]),
         )
-    
-    if not envelopes_raw:
-        raise ValueError(f"No envelopes found in {path}")
-    
-    # Parse envelopes
-    envelopes = {}
-    for class_name, class_data in envelopes_raw.items():
-        adsr = class_data.get("ADSR", {})
-        
-        # Extract ADSR parameters with defaults
-        # Handle dict, list, or scalar values
-        def _extract_mid(val, default):
-            if val is None:
-                return default
-            if isinstance(val, Mapping):
-                return val.get("mid", default)
-            if isinstance(val, (list, tuple)):
-                # For ranges like [min, mid, max], take middle value
-                return val[len(val) // 2] if val else default
-            return val
-        
-        attack_drop = float(_extract_mid(adsr.get("attack_drop"), 0.0))
-        attack_duration = int(_extract_mid(adsr.get("attack_duration_years"), 1))
-        decay_years = int(_extract_mid(adsr.get("decay_years"), 0))
-        sustain_level = float(_extract_mid(adsr.get("sustain_level"), 1.0))
-        sustain_years = int(_extract_mid(adsr.get("sustain_years"), 0))
-        release_years = int(_extract_mid(adsr.get("release_years"), 0))
-        
-        envelopes[class_name] = ADSREnvelope(
-            attack_drop=attack_drop,
-            attack_duration_years=attack_duration,
-            decay_years=decay_years,
-            sustain_level=sustain_level,
-            sustain_years=sustain_years,
-            release_years=release_years,
-        )
-    
-    return EnvelopeSet(envelopes=envelopes, metric=metric)
+    meta = {
+        "metadata": raw.get("metadata", {}),
+        "defaults": raw.get("defaults", {}),
+        "modulators": raw.get("modulators", {}),
+    }
+    return sev, meta
 
+class FireEnvelope(Envelope):
+    def __init__(self, path: str = "data/disturbances/envelopes/fire_envelope.yaml"):
+        sev, meta = _load_envelope_from_path(path)
+        super().__init__(sev_classes=sev, meta=meta)
+
+class WindEnvelope(Envelope):
+    def __init__(self, path: str = "data/disturbances/envelopes/wind_envelope.yaml"):
+        sev, meta = _load_envelope_from_path(path)
+        super().__init__(sev_classes=sev, meta=meta)
+
+# ------------------- Kernel -------------------
+
+class Kernel:
+    """
+    YAML-backed kernel that converts envelope proportions to multipliers.
+    Structure expected at data/disturbances/kernels/<kind>_kernel.yaml:
+      defaults:
+        combine: "multiplicative" | "additive"   # how to combine per-stage effects
+        floor: 0.60
+        ceiling: 1.10
+      # optional knobs per metric or stage if you want
+    """
+    def __init__(self, params: Dict[str, Any]):
+        self.params = params
+        dfl = params.get("defaults", {})
+        self.combine: str = dfl.get("combine", "multiplicative")
+        self.floor: float = float(dfl.get("floor", 0.60))
+        self.ceiling: float = float(dfl.get("ceiling", 1.10))
+
+    @classmethod
+    def from_yaml(cls, path: str) -> "Kernel":
+        with open(path, "r") as f:
+            raw = yaml.safe_load(f)
+        return cls(raw or {})
+
+    def proportion_to_multiplier(self, p: float) -> float:
+        """
+        Convert an envelope proportion p in [0,1] to a growth multiplier.
+        Default: multiplier = clip(1 - p, floor, ceiling).
+        """
+        m = 1.0 - float(p)
+        return max(self.floor, min(self.ceiling, m))
+
+class FireKernel(Kernel):
+    def __init__(self, path: str = "data/disturbances/kernels/fire_kernel.yaml"):
+        with open(path, "r") as f:
+            raw = yaml.safe_load(f) or {}
+        super().__init__(raw)
+
+class WindKernel(Kernel):
+    def __init__(self, path: str = "data/disturbances/kernels/wind_kernel.yaml"):
+        with open(path, "r") as f:
+            raw = yaml.safe_load(f) or {}
+        super().__init__(raw)
+
+# ------------------- Disturbance event -------------------
+
+@dataclass
+class DisturbanceEvent:
+    """A single disturbance occurrence anchored at start_age."""
+    envelope: Envelope
+    kernel: Kernel
+    start_age: float
+    severity: float            # scalar in (0,1)
+    seed: Optional[int] = None # for sampling within ranges
+
+    def _severity_class_key(self) -> str:
+        """
+        Map severity ∈ (0,1) to a sev_class key by parsing the numeric suffix 'x_y' in keys.
+        Picks the class whose [x, y] percent range contains severity*100.
+        Fallback: first key.
+        """
+        pct = 100.0 * max(0.0, min(1.0, self.severity))
+        for k in self.envelope.keys():
+            parts = k.split("_")
+            try:
+                lo = float(parts[-2])
+                hi = float(parts[-1])
+                if lo <= pct <= hi:
+                    return k
+            except Exception:
+                continue
+        return next(iter(self.envelope.keys()))
+
+    def _stage_at(self, age: float, sev_cls: SeverityClass) -> Stage:
+        """
+        Split duration into 4 phases: attack, decay, sustain, release.
+        Heuristic partition: 1, 1, max(duration-2,0), 1 years respectively,
+        truncating if duration < 4.
+        """
+        d = max(1, int(sev_cls.duration))
+        # Build edges
+        segments: list[Tuple[Stage, int]] = []
+        if d == 1:
+            segments = [("attack", 1)]
+        elif d == 2:
+            segments = [("attack", 1), ("decay", 1)]
+        elif d == 3:
+            segments = [("attack", 1), ("decay", 1), ("release", 1)]
+        else:
+            segments = [("attack", 1), ("decay", 1), ("sustain", d - 2), ("release", 1)]
+        t = age - self.start_age
+        if t < 0:
+            return "attack"  # not started; harmless default
+        acc = 0
+        for name, years in segments:
+            acc_next = acc + years
+            if t < acc_next:
+                return name  # type: ignore
+            acc = acc_next
+        return "release"
+
+    def _apply_modulators(self, metric: Metric, m: float, stand_state: Any) -> float:
+        """
+        Example modulator: young_stand from envelope.meta["modulators"].
+        If stand dominant height < threshold, scale toward multiplier_range[1].
+        """
+        mods = self.envelope.meta.get("modulators", {}) or {}
+        ys = mods.get("young_stand")
+        if ys and hasattr(stand_state, "hd"):
+            threshold = float(ys.get("threshold_height_ft", 0.0))
+            lo, hi = ys.get("multiplier_range", [1.0, 1.0])
+            lo, hi = float(lo), float(hi)
+            if stand_state.hd < threshold:
+                # linear ramp 0→threshold
+                frac = 1.0 - max(0.0, min(1.0, stand_state.hd / threshold))
+                m = m * (1.0 + frac * (hi - 1.0))
+        return m
+
+    def multipliers(self, age: float, stand_state: Any) -> Dict[Metric, float]:
+        """
+        Compute per-metric multipliers to apply at 'age'.
+        Steps:
+          1) pick sev class from severity
+          2) pick stage from age - start_age and class.duration
+          3) sample envelope proportion for each metric
+          4) convert to multiplier via kernel
+          5) apply envelope defaults floor/ceiling and modulators
+        Returns dict of multipliers for metrics present in envelope.
+        """
+        random.seed(self.seed)
+        key = self._severity_class_key()
+        sev_cls = self.envelope[key]
+        stage = self._stage_at(age, sev_cls)
+
+        # Sample proportions
+        props: Dict[Metric, float] = {}
+        for metric in ("basal_area", "volume", "height"):
+            lo, hi = sev_cls.range_for(stage, metric)  # type: ignore
+            props[metric] = random.uniform(lo, hi)
+
+        # Convert to multipliers using kernel and clamp by envelope defaults
+        m: Dict[Metric, float] = {}
+        floor = float(self.envelope.meta.get("defaults", {}).get("floor", 0.60))
+        ceiling = float(self.envelope.meta.get("defaults", {}).get("ceiling", 1.10))
+        for metric, p in props.items():
+            mi = self.kernel.proportion_to_multiplier(p)
+            mi = max(floor, min(ceiling, mi))
+            mi = self._apply_modulators(metric, mi, stand_state)
+            m[metric] = mi
+        return m
+
+# ------------------- Convenience factories -------------------
+
+def make_fire_event(start_age: float, severity: float | None = None, seed: int | None = None) -> DisturbanceEvent:
+    env = FireEnvelope()
+    ker = FireKernel()
+    sev = severity if severity is not None else get_severity(seed)
+    return DisturbanceEvent(envelope=env, kernel=ker, start_age=start_age, severity=sev, seed=seed)
+
+def make_wind_event(start_age: float, severity: float | None = None, seed: int | None = None) -> DisturbanceEvent:
+    env = WindEnvelope()
+    ker = WindKernel()
+    sev = severity if severity is not None else get_severity(seed)
+    return DisturbanceEvent(envelope=env, kernel=ker, start_age=start_age, severity=sev, seed=seed)
