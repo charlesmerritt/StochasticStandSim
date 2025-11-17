@@ -1,43 +1,39 @@
 from __future__ import annotations
 
-from dataclasses import replace
+import statistics
 
-from core.disturbances import FireDisturbance
-from core.growth import GrowthConfig, Region, StandParams, _advance_internal
-
-
-def _make_state(age: float = 10.0):
-    params = StandParams(
-        name="debug",
-        age=age,
-        tpa=600.0,
-        region=Region.UCP,
-        si25=60.0,
-    )
-    return params.to_state()
+from core.disturbances import (
+    CatastrophicDisturbanceGenerator,
+    ChronicDisturbanceGenerator,
+    GeneralDisturbanceGenerator,
+    sample_exponential_wait,
+)
 
 
-def test_fire_disturbance_adds_active_envelope():
-    state = _make_state()
-    disturbance = FireDisturbance(age=state.age, severity=0.6)
-    state = replace(state, pending_disturbances=state.pending_disturbances + (disturbance,))
-    cfg = GrowthConfig()
-
-    next_state, *_ = _advance_internal(state, dt=1.0, cfg=cfg)
-    assert next_state.active_envelopes, "Fire disturbance should register an active envelope"
-
-    env_info = next_state.active_envelopes[0]
-    assert env_info["type"] == "fire"
-    assert env_info["severity_class"] == disturbance.get_severity_class()
-    envelope = env_info["envelope"]
-    assert envelope.attack_duration_years >= 0
-
-    later_state, *_ = _advance_internal(next_state, dt=1.0, cfg=cfg)
-    assert later_state.active_envelopes, "Envelope should persist at least one additional year"
+def test_catastrophic_generator_produces_future_event():
+    gen = CatastrophicDisturbanceGenerator(mean_interval_years=25.0)
+    event = gen.sample_event(current_age=10.0)
+    assert event.category == "catastrophic"
+    assert event.start_age > 10.0
+    assert 0.5 <= event.severity <= 0.95
+    assert event.disturbance_level in {"light", "moderate", "heavy"}
+    assert event.ba_loss_fraction in {0.25, 0.5, 0.8}
+    assert event.tpa_loss_fraction == event.ba_loss_fraction
+    assert any(abs(event.hd_loss_fraction - val) < 1e-6 for val in (0.175, 0.35, 0.56))
 
 
-def test_fire_envelope_uses_yaml_parameters():
-    envelope_set = FireDisturbance.envelope_set()
-    envelope = envelope_set.get_envelope("severe_50_80")
-    assert envelope.attack_drop > 0.0
-    assert envelope.attack_duration_years >= 5
+def test_chronic_generator_has_lower_losses():
+    gen = ChronicDisturbanceGenerator(mean_interval_years=4.0)
+    event = gen.sample_event(current_age=30.0)
+    assert event.category == "chronic"
+    assert 0.05 <= event.severity <= 0.25
+    assert event.ba_loss_fraction <= 0.2
+    assert event.tpa_loss_fraction <= 0.2
+    assert event.hd_loss_fraction <= 0.1
+
+
+def test_exponential_wait_has_expected_mean():
+    mean_interval = 10.0
+    samples = [sample_exponential_wait(mean_interval) for _ in range(2000)]
+    sample_mean = statistics.mean(samples)
+    assert abs(sample_mean - mean_interval) < mean_interval * 0.2

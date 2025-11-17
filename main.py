@@ -4,7 +4,6 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-import gymnasium as gym
 from plots import plots
 
 
@@ -66,35 +65,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "If omitted for kernel plots, all kernels in data/disturbances/kernels are used.",
     )
     parser.add_argument(
-        "--model-path",
-        dest="model_path",
-        help="Path to a Stable Baselines3 policy (.zip) when using plot=policy_rollout.",
-    )
-    parser.add_argument(
-        "--fixed-rotation",
-        type=float,
-        default=25.0,
-        help="Rotation length in years for fixed policy plots.",
-    )
-    parser.add_argument(
-        "--fixed-thin-years",
-        default="10,18",
-        help="Comma-separated relative years for thinning in the fixed policy.",
-    )
-    parser.add_argument(
-        "--fixed-fert-years",
-        default="12,20",
-        help="Comma-separated relative years for fertilisation in the fixed policy.",
-    )
-    parser.add_argument(
         "--envelope-key",
         dest="envelope_key",
         help="Optional specific envelope key/class to render.",
-    )
-    parser.add_argument(
-        "--invert",
-        action="store_true",
-        help="Invert envelope plot (show 1−p so higher severities plot above mild).",
     )
     parser.add_argument(
         "--output-dir",
@@ -130,67 +103,6 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="When plotting growth, also simulate and overlay an unthinned stand.",
     )
-    parser.add_argument(
-        "--disturbance",
-        choices=["fire", "wind"],
-        default="fire",
-        help="Disturbance type for comparison plot.",
-    )
-    parser.add_argument("--dist-start", type=float, default=15.0, help="Disturbance start age.")
-    parser.add_argument("--severity", type=float, help="Fixed severity in (0,1). If omitted, uses --seed.")
-    parser.add_argument("--seed", type=int, default=123, help="RNG seed for disturbance.")
-    parser.add_argument(
-    "--si25",
-    type=float,
-    default=60.0,
-    help="Site index (base age 25, ft) for the stand used in comparison plots.",
-    )
-    parser.add_argument(
-        "--tpa0",
-        type=float,
-        default=600.0,
-        help="Initial trees per acre for the stand used in comparison plots.",
-    )
-    parser.add_argument(
-        "--rollout-steps",
-        type=int,
-        default=200,
-        help="Maximum number of steps to simulate for policy rollout plots.",
-    )
-    parser.add_argument(
-        "--deterministic",
-        action="store_true",
-        help="Use deterministic policy actions for policy rollout plots.",
-    )
-    parser.add_argument(
-        "--discount-rate",
-        dest="discount_rate",
-        type=float,
-        help="Override EnvConfig.discount_rate for policy rollout plots.",
-    )
-    parser.add_argument(
-        "--horizon-years",
-        dest="horizon_years",
-        type=float,
-        help="Override EnvConfig.horizon_years for policy rollout plots.",
-    )
-    parser.add_argument(
-        "--age0",
-        dest="age0",
-        type=float,
-        help="Override EnvConfig.age0 for policy rollout plots.",
-    )
-    parser.add_argument(
-        "--rng-seed",
-        dest="rng_seed",
-        type=int,
-        help="Override EnvConfig RNG seed for policy rollout plots.",
-    )
-    parser.add_argument(
-        "--disturbances",
-        action="store_true",
-        help="Enable disturbances when simulating rollouts.",
-    )
     return parser
 
 
@@ -200,29 +112,6 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     plot_kwargs: dict[str, Any] = {}
-
-    def _parse_years_list(value: str) -> list[float]:
-        if not value:
-            return []
-        return [float(part.strip()) for part in value.split(",") if part.strip()]
-
-    env_overrides: dict[str, Any] = {}
-    if args.discount_rate is not None:
-        env_overrides["discount_rate"] = args.discount_rate
-    if args.horizon_years is not None:
-        env_overrides["horizon_years"] = args.horizon_years
-    if args.age0 is not None:
-        env_overrides["age0"] = args.age0
-    if args.dt is not None:
-        env_overrides["dt"] = args.dt
-    if args.si25 is not None:
-        env_overrides["si25"] = args.si25
-    if args.tpa0 is not None:
-        env_overrides["tpa0"] = args.tpa0
-    if args.rng_seed is not None:
-        env_overrides["rng_seed"] = args.rng_seed
-    if args.disturbances:
-        env_overrides["disturbance_enabled"] = True
     if args.plot == "envelope" and args.envelope_key is not None:
         plot_kwargs["envelope_key"] = args.envelope_key
     if args.plot == "growth":
@@ -231,31 +120,7 @@ def main() -> None:
         plot_kwargs["dt"] = args.dt
         if args.compare_unthinned:
             plot_kwargs["compare_unthinned"] = True
-    if args.plot == "compare":
-        plot_kwargs["disturbance"] = args.disturbance
-        plot_kwargs["start_age"] = args.dist_start
-        plot_kwargs["seed"] = args.seed
-        if args.severity is not None:
-            plot_kwargs["severity"] = args.severity
-        plot_kwargs["years"] = args.years
-        plot_kwargs["dt"] = args.dt
-        plot_kwargs["si25"] = args.si25
-        plot_kwargs["tpa0"] = args.tpa0
-    if args.plot == "policy_rollout":
-        if not args.model_path:
-            parser.error("--model-path is required when plot=policy_rollout")
-        plot_kwargs["model_path"] = args.model_path
-        plot_kwargs["steps"] = args.rollout_steps
-        plot_kwargs["deterministic"] = args.deterministic
-        if env_overrides:
-            plot_kwargs["env_overrides"] = env_overrides
-    if args.plot == "fixed_policy":
-        plot_kwargs["steps"] = args.rollout_steps
-        plot_kwargs["rotation_years"] = args.fixed_rotation
-        plot_kwargs["thin_years"] = _parse_years_list(args.fixed_thin_years)
-        plot_kwargs["fert_years"] = _parse_years_list(args.fixed_fert_years)
-        if env_overrides:
-            plot_kwargs["env_overrides"] = env_overrides
+
     if args.plot == "envelope" and not args.envelope_path:
         envelope_dir = Path("data/disturbances/envelopes")
         if not envelope_dir.exists():
@@ -288,9 +153,6 @@ def main() -> None:
                 continue
             else:
                 saved_paths.append(output_path)
-        
-        if args.plot == "envelope" and args.invert:
-            plot_kwargs["invert"] = True
 
         if saved_paths:
             print("Saved plots:")

@@ -1,7 +1,21 @@
-from typing import Literal, Tuple, Dict
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal, Tuple, Dict, Sequence, List
 from math import exp, log, sqrt
+import numpy as np
 
 Region = Literal["ucp", "pucp", "lcp"]
+Percentile = Literal[0, 25, 50, 95]
+
+
+@dataclass
+class WeibullParams:
+    """Three-parameter Weibull distribution."""
+
+    a: float  # location
+    b: float  # scale
+    c: float  # shape
 
 class PMRCModel:
     """
@@ -192,3 +206,169 @@ class PMRCModel:
         if ba <= 0 or qmd_in <= 0:
             return 0.0
         return ba / (0.005454154 * (qmd_in ** 2))
+
+    # ----------------- Weibull fit -----------------
+    Percentile = Literal[0, 25, 50, 95]
+
+    # Coefficients are (a0, a1, a2) where a2 may be zero when PHWD is not used.
+    WEIBULL_PERCENTILE_COEFFS: Dict[Region, Dict[Percentile, Tuple[float, float, float]]] = {
+        "ucp": {
+            0:  (2.374894, 0.976577, 0.0),
+            25: (2.586318, 0.503910, 0.0),
+            50: (2.714412, 0.485314, 0.0),
+            95: (2.869722, 0.469809, 0.0),
+        },
+        "pucp": {
+            0:  (2.374894, 0.976577, 0.0),
+            25: (2.586318, 0.503910, 0.0),
+            50: (2.714412, 0.485314, 0.0),
+            95: (2.869722, 0.469809, 0.0),
+        },
+        "lcp": {
+            0:  (2.168021, 0.773026, 0.0),
+            25: (2.547423, 0.574370, 0.0),
+            50: (2.653169, 0.513997, 0.0),
+            95: (2.861802, 0.463918, 0.0),
+        },
+    }
+
+    def predict_diameter_percentiles(
+        ba: float,
+        tpa: float,
+        region: Region,
+        phwd: float = 0.0,
+    ) -> Dict[Percentile, float]:
+        """
+        Predict diameter percentiles (P0, P25, P50, P95) in inches
+        from basal area and trees per acre for a given region.
+
+        Uses log-linear models on BA/TPA and optional percent hardwood.
+        """
+        if ba <= 0.0 or tpa <= 0.0:
+            raise ValueError("ba and tpa must be positive to predict percentiles")
+
+        coeffs_by_p = self.WEIBULL_PERCENTILE_COEFFS[region]
+        ln_ratio = log(ba / tpa)
+        result: Dict[Percentile, float] = {}
+
+        for p, (a0, a1, a2) in coeffs_by_p.items():
+            ln_px = a0 + a1 * ln_ratio + a2 * phwd
+            result[p] = exp(ln_px)
+
+        return result
+
+    # ---------- Weibull helpers ----------
+
+    @staticmethod
+    def _weibull_cdf(dbh: float, params: WeibullParams) -> float:
+        if dbh <= params.a:
+            return 0.0
+        x = (dbh - params.a) / params.b
+        if x <= 0.0:
+            return 0.0
+        return 1.0 - exp(-(x ** params.c))
+
+    @staticmethod
+    def fit_weibull_from_percentiles(percentiles: Dict[Percentile, float]) -> WeibullParams:
+        """
+        Fit a three-parameter Weibull distribution to the supplied DBH percentiles.
+        """
+        required = (0, 25, 50, 95)
+        for key in required:
+            if key not in percentiles:
+                raise ValueError(f"Percentile {key} missing for Weibull fit.")
+
+        probs = {0: 0.0, 25: 0.25, 50: 0.5, 95: 0.95}
+        d25 = percentiles[25]
+        d50 = percentiles[50]
+
+        def params_for_shape(c: float) -> Tuple[float, float, float] | None:
+            if c <= 0.0:
+                return None
+            k25 = (-log(1.0 - probs[25])) ** (1.0 / c)
+            k50 = (-log(1.0 - probs[50])) ** (1.0 / c)
+            denom = k50 - k25
+            if denom <= 0.0:
+                return None
+            b = (d50 - d25) / denom
+            if b <= 0.0:
+                return None
+            a = d25 - b * k25
+            if a < 0.0:
+                a = 0.0
+            return a, b, c
+
+        def shape_error(c: float) -> Tuple[float, float, float, float] | None:
+            params = params_for_shape(c)
+            if not params:
+                return None
+            a, b, c_val = params
+            err = 0.0
+            for p in (0, 95):
+                prob = probs[p]
+                if prob <= 0.0:
+                    pred = a
+                else:
+                    pred = a + b * ((-log(1.0 - prob)) ** (1.0 / c_val))
+                err += (pred - percentiles[p]) ** 2
+            return err, a, b, c_val
+
+        best: Tuple[float, float, float, float] | None = None
+        for shape in np.linspace(0.5, 8.0, 150):
+            cand = shape_error(shape)
+            if not cand:
+                continue
+            if best is None or cand[0] < best[0]:
+                best = cand
+
+        if best is None:
+            raise RuntimeError("Failed to fit Weibull parameters from percentiles.")
+
+        _, a_hat, b_hat, c_hat = best
+        return WeibullParams(a=float(a_hat), b=float(max(b_hat, 1e-6)), c=float(max(c_hat, 1e-6)))
+
+    @staticmethod
+    def size_class_distribution_from_weibull(
+        params: WeibullParams,
+        tpa: float,
+        dbh_bounds: Sequence[float],
+    ) -> Tuple[List[float], List[float]]:
+        """
+        Compute trees and basal area per size class from Weibull parameters.
+        """
+        bounds = list(dbh_bounds)
+        if len(bounds) < 2:
+            raise ValueError("dbh_bounds must include at least two values.")
+        if any(bounds[i + 1] <= bounds[i] for i in range(len(bounds) - 1)):
+            raise ValueError("dbh_bounds must be strictly increasing.")
+        trees: List[float] = []
+        basals: List[float] = []
+        for lo, hi in zip(bounds[:-1], bounds[1:]):
+            f_hi = PMRCModel._weibull_cdf(hi, params)
+            f_lo = PMRCModel._weibull_cdf(lo, params)
+            prob = max(0.0, min(1.0, f_hi - f_lo))
+            trees_per_class = tpa * prob
+            trees.append(trees_per_class)
+            midpoint = 0.5 * (lo + hi)
+            ba_per_tree = 0.005454154 * (midpoint ** 2)
+            basals.append(trees_per_class * ba_per_tree)
+        return trees, basals
+
+    def diameter_class_distribution(
+        self,
+        *,
+        ba: float,
+        tpa: float,
+        dbh_bounds: Sequence[float],
+        region: Region | None = None,
+        phwd: float = 0.0,
+    ) -> Tuple[Dict[Percentile, float], WeibullParams, List[float], List[float]]:
+        """
+        Convenience helper to derive Weibull-driven size classes from BA/TPA.
+        """
+        region_key = (region or self.region).lower()
+        percentiles = self.predict_diameter_percentiles(ba, tpa, region_key, phwd)
+        params = self.fit_weibull_from_percentiles(percentiles)
+        trees, basals = self.size_class_distribution_from_weibull(params, tpa, dbh_bounds)
+        return percentiles, params, trees, basals
+

@@ -1,10 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Literal, Tuple
-from math import exp, log, sqrt
 
 from core.pmrc_model import PMRCModel
-from core.disturbances import make_fire_event, make_wind_event, DisturbanceEvent, get_severity
+from core.disturbances import DisturbanceEvent
+from core.stochastic_pmrc_model import StochasticPMRCModel
 
 
 Region = Literal["ucp", "pucp", "lcp"]
@@ -17,9 +17,14 @@ class StandConfig:
     region: Region = "ucp"
     base_age: int = 25
     hold_tpa_below_asymptote: bool = True  # hold when TPA <= 100
-    tpa_geometric_decay: Optional[float] = 0.99
+    tpa_geometric_decay: Optional[float] = .9999
     tpa_from_ba_policy: Literal["qmd_constant", "gamma"] = "qmd_constant"
     tpa_from_ba_gamma: float = 1.0  # used when policy == "gamma"
+    use_stochastic_growth: bool = False
+    hd_noise: float = 0.02
+    tpa_noise: float = 0.02
+    ba_noise: float = 0.03
+    tvob_noise: float = 0.03
 
 
 @dataclass
@@ -35,6 +40,7 @@ class ThinEvent:
     # Target residual BA at the thin age, like R's thin*_residBA
     residual_ba: float
     row_fraction: float = 0.25
+    residual_fraction: Optional[float] = None
 
 
 @dataclass
@@ -54,6 +60,7 @@ class StandState:
     history: Dict[str, float] = field(default_factory=dict)
     fert_hd_applied: float = 0.0
     fert_ba_applied: float = 0.0
+    disturbance_flag: Optional[str] = None
 
 
 # --------------------------- Stand engine ---------------------------
@@ -63,7 +70,16 @@ class Stand:
         self.cfg = cfg or StandConfig()
         assert 0.0 < self.cfg.tpa_geometric_decay <= 1.0
         # normalize region in both places
-        self.model = PMRCModel(region=self.cfg.region)
+        if self.cfg.use_stochastic_growth:
+            self.model = StochasticPMRCModel(
+                region=self.cfg.region,
+                hd_noise=self.cfg.hd_noise,
+                tpa_noise=self.cfg.tpa_noise,
+                ba_noise=self.cfg.ba_noise,
+                tvob_noise=self.cfg.tvob_noise,
+            )
+        else:
+            self.model = PMRCModel(region=self.cfg.region)
         
         # Require one of {hd, si25}
         has_hd = init.hd is not None and init.hd > 0
@@ -98,6 +114,7 @@ class Stand:
             ci=float(init.ci),
             fert_hd_applied=0.0,
             fert_ba_applied=0.0,
+            disturbance_flag=init.disturbance_flag,
         )
         # bookkeeping
         self._fert_hd_applied = 0.0
@@ -111,8 +128,21 @@ class Stand:
     def add_fertilization(self, age: float, N: float, P: float) -> None:
         self._fert.append(FertEvent(age=age, N=N, P=P))
 
-    def add_thin_to_residual_ba(self, age: float, residual_ba: float, row_fraction: float = 0.25) -> None:
-        self._thin.append(ThinEvent(age=age, residual_ba=residual_ba, row_fraction=row_fraction))
+    def add_thin_to_residual_ba(
+        self,
+        age: float,
+        residual_ba: float,
+        row_fraction: float = 0.25,
+        residual_fraction: Optional[float] = None,
+    ) -> None:
+        self._thin.append(
+            ThinEvent(
+                age=age,
+                residual_ba=residual_ba,
+                row_fraction=row_fraction,
+                residual_fraction=residual_fraction,
+            )
+        )
 
     def _fert_cumulative_at_age(self, age: float) -> Tuple[float, float]:
         hd_total = 0.0
@@ -145,6 +175,7 @@ class Stand:
                 history=dict(s.history),
                 fert_hd_applied=s.fert_hd_applied,
                 fert_ba_applied=s.fert_ba_applied,
+                disturbance_flag=s.disturbance_flag,
             )
             return self.state
             # 1) Growth projection (unthinned baseline)
@@ -199,36 +230,22 @@ class Stand:
         s.fert_hd_applied = cum_hd
         s.fert_ba_applied = cum_ba
 
-    # --- disturbances: BA→TPA policy, then HD, then recompute TVOB ---
-        ba_pre = ba2  # snapshot before BA multiplier(s)
+        history_out = dict(s.history)
+        disturbance_flag = s.disturbance_flag
         for ev in getattr(self, "_dist", []):
-            if a2 < ev.start_age:
+            if ev.triggered or a2 < ev.start_age:
                 continue
-            mult = ev.multipliers(a2, self.state)  # {'basal_area','height',...}
-
-            # BA first
-            ba2 *= mult.get("basal_area", 1.0)
-
-            # TPA derived from BA change
-            if self.cfg.tpa_from_ba_policy == "qmd_constant":
-                if tpa2 > 0.0 and ba_pre > 0.0:
-                    qmd_const = PMRCModel.qmd(tpa=tpa2, ba=ba_pre)
-                    tpa2 = PMRCModel.tpa_from_ba_qmd(ba=ba2, qmd_in=qmd_const)
-                else:
-                    tpa2 = 0.0
-            else:  # gamma rule
-                ratio = (ba2 / ba_pre) if ba_pre > 0 else 1.0
-                tpa2 = tpa2 * (ratio ** float(self.cfg.tpa_from_ba_gamma))
-
-            # HD multiplier
-            hd2 *= mult.get("height", 1.0)
-
-            # prepare for possible chained events at same step
-            ba_pre = ba2
+            ba2 *= max(0.0, 1.0 - ev.ba_loss_fraction)
+            tpa2 *= max(0.0, 1.0 - ev.tpa_loss_fraction)
+            hd2 *= max(0.0, 1.0 - ev.hd_loss_fraction)
+            ba_unthinned2 = ba2
+            ev.triggered = True
+            if ev.disturbance_level:
+                disturbance_flag = ev.disturbance_level
+            history_out[f"disturbance_{ev.category}_{ev.start_age:.2f}"] = ev.severity
 
         tvob2 = self.model.tvob(a2, tpa2, hd2, ba2, region=self.cfg.region)
 
-        
         self.state = StandState(
             age=a2,
             tpa=tpa2,
@@ -240,9 +257,10 @@ class Stand:
             ci=s.ci,
             ci_anchor_age=s.ci_anchor_age,
             ci_anchor_value=s.ci_anchor_value,
-            history=dict(s.history),
+            history=history_out,
             fert_hd_applied=s.fert_hd_applied,
             fert_ba_applied=s.fert_ba_applied,
+            disturbance_flag=disturbance_flag,
         )
 
         # Apply any instantaneous thin at end of step if scheduled at a2
@@ -291,8 +309,13 @@ class Stand:
         if ev.residual_ba >= pre_ba:
             # cannot thin to higher BA
             return
+        target_ba = ev.residual_ba
+        if ev.residual_fraction is not None:
+            target_ba = max(0.0, ev.residual_fraction * pre_ba)
+        if target_ba >= pre_ba:
+            return
 
-        post_ba = ev.residual_ba
+        post_ba = target_ba
         # Constant QMD: assumes trees removed proportionally across diameter classes
         qmd_pre = PMRCModel.qmd(tpa=pre_tpa, ba=pre_ba)
         post_tpa = PMRCModel.tpa_from_ba_qmd(ba=post_ba, qmd_in=qmd_pre)
@@ -315,6 +338,7 @@ class Stand:
             history={**s.history, f"thin_at_{s.age:.3f}": ev.residual_ba},
             fert_hd_applied=s.fert_hd_applied,
             fert_ba_applied=s.fert_ba_applied,
+            disturbance_flag=s.disturbance_flag,
         )
 
     def add_disturbance(self, event: DisturbanceEvent) -> None:
@@ -345,6 +369,7 @@ class Stand:
             history={},
             fert_hd_applied=0.0,
             fert_ba_applied=0.0,
+            disturbance_flag=None,
         )
 
         # clear management and disturbance histories
@@ -364,10 +389,11 @@ class Stand:
     def summary(self) -> str:
         s = self.state
         ba_diff = s.ba_unthinned - s.ba
+        dist = f" | Disturbance={s.disturbance_flag}" if s.disturbance_flag else ""
         return (
             f"Age {s.age:.1f} | HD={s.hd:.2f} ft | TPA={s.tpa:.1f} | "
-            f"BA={s.ba:.2f} ft²/ac | BA_unthinned={s.ba_unthinned:.2f} ft²/ac (Δ{ba_diff:+.2f}) | "
-            f"TVOB={s.tvob:.1f} | CI={s.ci_anchor_value or 0.0:.3f}"
+            f"BA={s.ba:.2f} ft2/ac | BA_unthinned={s.ba_unthinned:.2f} ft2/ac ({ba_diff:+.2f}) | "
+            f"TVOB={s.tvob:.1f} | CI={s.ci_anchor_value or 0.0:.3f}{dist}"
         )
 
 if __name__ == "__main__":
