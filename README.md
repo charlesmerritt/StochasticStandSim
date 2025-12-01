@@ -57,6 +57,7 @@ At a high level, step() only does nine things, in this order:
 6. Termination check: Decide terminated (e.g., SELL/EXIT action, max age, catastrophic rule) and truncated (time-horizon cutoff).
 7. Advance env: self.t += 1, self.state = s1, set self.done = terminated or truncated.
 8. Assemble info (without overwriting): Merge {"growth": …, "disturbance": …, "economics": …, "action": …, "time": …}.
+
 9. Return: Produce obs (or raw state if that’s your contract) and return (obs, reward, terminated, truncated, info).
 
 ## Disturbances
