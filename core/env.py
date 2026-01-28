@@ -6,7 +6,12 @@ import gymnasium as gym
 from gymnasium import spaces
 
 from core.growth import Stand, StandConfig, StandState
-from core.disturbances import make_fire_event, make_wind_event
+from core.disturbances import (
+    make_fire_event,
+    make_wind_event,
+    CatastrophicDisturbanceGenerator,
+    ChronicDisturbanceGenerator,
+)
 from core.pmrc_model import PMRCModel
 from core.actions import (
     ActionManager,
@@ -30,6 +35,9 @@ class EnvConfig:
     # Disturbances
     disturbance_enabled: bool = False
     disturbance_probs: Dict[str, float] = field(default_factory=lambda: {"fire": 0.0, "wind": 0.0})
+    disturbance_mode: Literal["uniform", "poisson"] = "uniform"
+    cat_mean_interval: float = 25.0
+    chronic_mean_interval: float = 6.0
     severity_dist: Literal["uniform", "beta"] = "uniform"
     severity_beta: Tuple[float, float] = (2.0, 5.0)   # only used if severity_dist=="beta"
     rng_seed: Optional[int] = 123
@@ -93,6 +101,14 @@ class StandMgmtEnv(gym.Env):
         )
         self.stand: Stand | None = None
         self.age_end = self.cfg.age0 + self.cfg.horizon_years
+        # optional Poisson disturbance generators
+        self._cat_gen = None
+        self._chronic_gen = None
+        self._next_cat_age = None
+        self._next_chronic_age = None
+        if self.cfg.disturbance_mode == "poisson" and self.cfg.disturbance_enabled:
+            self._cat_gen = CatastrophicDisturbanceGenerator(self.cfg.cat_mean_interval)
+            self._chronic_gen = ChronicDisturbanceGenerator(self.cfg.chronic_mean_interval)
         self._reset_core()
 
     # ---------------- core helpers ----------------
@@ -110,6 +126,11 @@ class StandMgmtEnv(gym.Env):
         self.manager.salvaged_recently = False
         self.manager.sold = False
         self._prev_volume = self.stand.state.tvob  # track for growth rewards
+        if self.cfg.disturbance_mode == "poisson" and self.cfg.disturbance_enabled:
+            self._next_cat_age = self._cat_gen.sample_event(self.cfg.age0, rng=self.rng).start_age if self._cat_gen else None
+            self._next_chronic_age = (
+                self._chronic_gen.sample_event(self.cfg.age0, rng=self.rng).start_age if self._chronic_gen else None
+            )
 
     def _obs(self) -> np.ndarray:
         s = self.stand.state
@@ -146,18 +167,36 @@ class StandMgmtEnv(gym.Env):
         if self.stand.state.tpa <= 0.0:  # fallow after harvest
             return
         age = self.stand.state.age
-        for kind, p in self.cfg.disturbance_probs.items():
-            p = max(0.0, min(1.0, float(p)))
-            if self.rng.random() < p:
-                sev = self._draw_severity()
-                seed = int(self.rng.integers(0, 2**31 - 1))
-                if kind == "fire":
-                    ev = make_fire_event(start_age=age, severity=sev, seed=seed)
-                elif kind == "wind":
-                    ev = make_wind_event(start_age=age, severity=sev, seed=seed)
-                else:
-                    continue
+        if self.cfg.disturbance_mode == "poisson":
+            # Catastrophic events (reset-like)
+            if self._cat_gen and self._next_cat_age is not None and age >= self._next_cat_age:
+                ev = self._cat_gen.sample_event(age, rng=self.rng)
+                self._next_cat_age = self._cat_gen.sample_event(age, rng=self.rng).start_age
+                # interpret as severe fire for now
+                ev = make_fire_event(start_age=age, severity=ev.severity)
+                ev.disturbance_level = "severe"
                 self.stand.add_disturbance(ev)
+            # Chronic events (small shocks)
+            if self._chronic_gen and self._next_chronic_age is not None and age >= self._next_chronic_age:
+                ev = self._chronic_gen.sample_event(age, rng=self.rng)
+                self._next_chronic_age = self._chronic_gen.sample_event(age, rng=self.rng).start_age
+                # map to wind-like mild event
+                mild = make_wind_event(start_age=age, severity=ev.severity)
+                mild.disturbance_level = "chronic"
+                self.stand.add_disturbance(mild)
+        else:
+            for kind, p in self.cfg.disturbance_probs.items():
+                p = max(0.0, min(1.0, float(p)))
+                if self.rng.random() < p:
+                    sev = self._draw_severity()
+                    seed = int(self.rng.integers(0, 2**31 - 1))
+                    if kind == "fire":
+                        ev = make_fire_event(start_age=age, severity=sev, seed=seed)
+                    elif kind == "wind":
+                        ev = make_wind_event(start_age=age, severity=sev, seed=seed)
+                    else:
+                        continue
+                    self.stand.add_disturbance(ev)
 
     # ---------------- gym API ----------------
 

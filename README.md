@@ -58,3 +58,9 @@ At a high level, step() only does nine things, in this order:
 7. Advance env: self.t += 1, self.state = s1, set self.done = terminated or truncated.
 8. Assemble info (without overwriting): Merge {"growth": …, "disturbance": …, "economics": …, "action": …, "time": …}.
 9. Return: Produce obs (or raw state if that’s your contract) and return (obs, reward, terminated, truncated, info).
+
+## Disturbances
+- Two modes in `EnvConfig`:
+  - `disturbance_mode="uniform"` (default): per-step Bernoulli draws using `disturbance_probs` with severities sampled from `uniform` or `beta`.
+  - `disturbance_mode="poisson"`: draws two independent generators—`CatastrophicDisturbanceGenerator` (mean interval `cat_mean_interval`) and `ChronicDisturbanceGenerator` (mean interval `chronic_mean_interval`). Catastrophic events behave like severe fires (large BA/TPA losses); chronic events act as mild wind noise on transitions.
+- Toggle via `EnvConfig.disturbance_enabled`; adjust intervals as needed for Monte Carlo uncertainty studies.
