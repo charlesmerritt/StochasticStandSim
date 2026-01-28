@@ -17,4 +17,33 @@ dependencies = [
     "gymnasium>=1.2.1",
     "seaborn>=0.13.2",
     "dataclasses>=0.8",
+    "ruff>=0.14.14",
 ]
+
+[dependency-groups]
+dev = [
+    "black>=26.1.0",
+    "ruff>=0.14.14",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # import sorting
+    "B",  # bugbear
+    "UP", # pyupgrade
+]
+
+# Rules that conflict with Black or are noisy
+ignore = [
+    "E203",  # whitespace before ':'
+    "E501",  # line length (Black handles this)
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]

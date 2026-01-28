@@ -1,20 +1,31 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Literal, Tuple
+from enum import Enum
+import math
 
 from core.pmrc_model import PMRCModel
 from core.disturbances import DisturbanceEvent
-from core.stochastic_pmrc_model import StochasticPMRCModel
+from core.stochastic_stand import StochasticPMRC, StandState as StochStandState
+import numpy as np
 
 
-Region = Literal["ucp", "pucp", "lcp"]
+class Region(str, Enum):
+    UCP = "ucp"
+    PUCP = "pucp"
+    LCP = "lcp"
+
+
+class SIForm(str, Enum):
+    PROJECTION = "projection"
+    PS80 = "ps80"
 
 
 # --------------------------- Data models ---------------------------
 
 @dataclass
 class StandConfig:
-    region: Region = "ucp"
+    region: Region | str = Region.UCP
     base_age: int = 25
     hold_tpa_below_asymptote: bool = True  # hold when TPA <= 100
     tpa_geometric_decay: Optional[float] = .9999
@@ -47,9 +58,10 @@ class ThinEvent:
 class StandState:
     age: float
     tpa: float
-    si25: Optional[float]
-    hd: float
-    ba: float
+    si25: Optional[float] = None
+    hd: float = 0.0
+    ba: float = 0.0
+    region: Region | str = Region.UCP
     ba_unthinned: float = 0.0  # what BA would be without thinning
     tvob: float = 0.0
     ci: float = 0.0  # competition index used only during recovery
@@ -68,18 +80,26 @@ class StandState:
 class Stand:
     def __init__(self, init: StandState, cfg: StandConfig | None = None):
         self.cfg = cfg or StandConfig()
+        # allow init.region to override config region
+        region_source = init.region if getattr(init, "region", None) is not None else self.cfg.region
+        region_value = region_source.value if isinstance(region_source, Region) else region_source
+        region_value = str(region_value).lower()
+        object.__setattr__(self.cfg, "region", region_value)
         assert 0.0 < self.cfg.tpa_geometric_decay <= 1.0
         # normalize region in both places
+        self.model = PMRCModel(region=region_value)
+        self._rng = np.random.default_rng()
+        self._stochastic: StochasticPMRC | None = None
         if self.cfg.use_stochastic_growth:
-            self.model = StochasticPMRCModel(
-                region=self.cfg.region,
-                hd_noise=self.cfg.hd_noise,
-                tpa_noise=self.cfg.tpa_noise,
-                ba_noise=self.cfg.ba_noise,
-                tvob_noise=self.cfg.tvob_noise,
+            # Map existing noise knobs onto the stochastic PMRC wrapper
+            sigma_log_hd = self.cfg.hd_noise if self.cfg.hd_noise > 0 else None
+            self._stochastic = StochasticPMRC(
+                self.model,
+                sigma_log_ba=max(1e-6, self.cfg.ba_noise),
+                sigma_tpa=max(1e-6, self.cfg.tpa_noise * 1000.0),
+                sigma_log_hd=sigma_log_hd,
+                use_binomial_tpa=True,
             )
-        else:
-            self.model = PMRCModel(region=self.cfg.region)
         
         # Require one of {hd, si25}
         has_hd = init.hd is not None and init.hd > 0
@@ -106,6 +126,7 @@ class Stand:
         self.state = StandState(
             age=float(init.age),
             tpa=float(init.tpa),
+            region=region_value,
             si25=float(si25),
             hd=float(hd),
             ba=float(ba),
@@ -164,6 +185,7 @@ class Stand:
             self.state = StandState(
                 age=a2,
                 tpa=0.0,
+                region=self.cfg.region,
                 si25=s.si25,
                 hd=max(0.0, s.hd),
                 ba=0.0,
@@ -178,7 +200,59 @@ class Stand:
                 disturbance_flag=s.disturbance_flag,
             )
             return self.state
-            # 1) Growth projection (unthinned baseline)
+        # --- stochastic growth path ----
+        if self._stochastic is not None:
+            stoch_state = StochStandState(
+                age=s.age,
+                hd=s.hd,
+                tpa=s.tpa,
+                ba=s.ba,
+                si25=s.si25 or 0.0,
+                region=self.cfg.region,
+                phwd=0.0,
+            )
+            next_state, level, _ = self._stochastic.sample_next_state_with_event(
+                stoch_state,
+                dt,
+                self._rng,
+            )
+            hd2, ba2, tpa2 = next_state.hd, next_state.ba, next_state.tpa
+            disturbance_flag = level or s.disturbance_flag
+
+            # Apply fertilization deltas additively (respect scheduled fert events)
+            cum_hd, cum_ba = self._fert_cumulative_at_age(next_state.age)
+            inc_hd = cum_hd - s.fert_hd_applied
+            inc_ba = cum_ba - s.fert_ba_applied
+            hd2 += inc_hd
+            ba2 += inc_ba
+            s.fert_hd_applied = cum_hd
+            s.fert_ba_applied = cum_ba
+
+            tvob2 = self.model.tvob(next_state.age, tpa2, hd2, ba2, region=self.cfg.region)
+
+            self.state = StandState(
+                age=next_state.age,
+                tpa=tpa2,
+                region=self.cfg.region,
+                si25=s.si25,
+                hd=hd2,
+                ba=ba2,
+                ba_unthinned=ba2,
+                tvob=tvob2,
+                ci=s.ci,
+                ci_anchor_age=s.ci_anchor_age,
+                ci_anchor_value=s.ci_anchor_value,
+                history=dict(s.history),
+                fert_hd_applied=s.fert_hd_applied,
+                fert_ba_applied=s.fert_ba_applied,
+                disturbance_flag=disturbance_flag,
+            )
+
+            # Apply any instantaneous thin scheduled at the advanced age
+            self._maybe_apply_thin_at(self.state.age)
+            return self.state
+
+        # 1) Growth projection (unthinned baseline)
         hd2 = self.model.hd_project(a1, s.hd, a2) if s.hd > 0 else 0.0
 
         # --- TPA: enforce monotone non-increase ---
@@ -249,6 +323,7 @@ class Stand:
         self.state = StandState(
             age=a2,
             tpa=tpa2,
+            region=self.cfg.region,
             si25=s.si25,
             hd=hd2,
             ba=ba2,
@@ -327,6 +402,7 @@ class Stand:
         self.state = StandState(
             age=s.age,
             tpa=post_tpa,
+            region=self.cfg.region,
             si25=s.si25,
             hd=pre_hd,
             ba=post_ba,
@@ -358,6 +434,7 @@ class Stand:
         self.state = StandState(
             age=age_init,
             tpa=tpa_val,
+            region=self.cfg.region,
             si25=si25_val,
             hd=hd,
             ba=ba,
@@ -395,6 +472,52 @@ class Stand:
             f"BA={s.ba:.2f} ft2/ac | BA_unthinned={s.ba_unthinned:.2f} ft2/ac ({ba_diff:+.2f}) | "
             f"TVOB={s.tvob:.1f} | CI={s.ci_anchor_value or 0.0:.3f}{dist}"
         )
+
+
+# --------------------------- Module-level utilities ---------------------------
+
+def _pmrc(region: Region | str | None = None) -> PMRCModel:
+    reg = region.value if isinstance(region, Region) else region
+    reg = reg or Region.UCP.value
+    return PMRCModel(region=str(reg).lower())
+
+
+def si_from_hd(hd: float, form: SIForm = SIForm.PROJECTION) -> float:
+    return _pmrc().si_from_hd(hd, form=form.value)
+
+
+def hd_from_si(si25: float, form: SIForm = SIForm.PROJECTION) -> float:
+    return _pmrc().hd_from_si(si25, form=form.value)
+
+
+def hd_project(age1: float, hd1: float, age2: float, *, region: Region = Region.UCP) -> float:
+    return _pmrc(region).hd_project(age1, hd1, age2)
+
+
+def tpa_project(tpa1: float, si25: float, age1: float, age2: float, *, region: Region = Region.UCP) -> float:
+    return _pmrc(region).tpa_project(tpa1, si25, age1, age2)
+
+
+def ba_predict(age: float, tpa: float, hd: float, region: Region = Region.UCP) -> float:
+    return _pmrc(region).ba_predict(age, tpa, hd, region=region.value if isinstance(region, Region) else region)
+
+
+def step(init: StandState, *, cfg: StandConfig | None = None, dt: float = 1.0) -> tuple[StandState, float]:
+    stand = Stand(init=init, cfg=cfg)
+    state = stand.step(dt)
+    return state, state.ba
+
+
+def run_horizon(init: StandState, *, years: float, dt: float = 1.0, cfg: StandConfig | None = None) -> List[tuple[StandState, float]]:
+    stand = Stand(init=init, cfg=cfg)
+    target_age = init.age + years
+    out: List[tuple[StandState, float]] = []
+    while stand.state.age < target_age - 1e-9:
+        step_dt = min(dt, target_age - stand.state.age)
+        state = stand.step(step_dt)
+        out.append((state, state.ba))
+    return out
+
 
 if __name__ == "__main__":
     # # Instantiate two stands with different configs
