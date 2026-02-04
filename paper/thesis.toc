@@ -1,0 +1,42 @@
+\contentsline {pseudochapter}{Acknowledgments}{v}{chapter*.3}%
+\contentsline {pseudochapter}{List of Figures}{viii}{chapter*.4}%
+\contentsline {pseudochapter}{List of Tables}{ix}{chapter*.5}%
+\par \vspace {6\p@ }
+\noindent {\sc Chapter}
+\vspace {-3\p@ }
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
+\contentsline {subsection}{\numberline {1.0.1}Background and Context}{1}{subsection.1.0.1}%
+\contentsline {subsubsection}{Stochastic vs. Deterministic Planning}{5}{section*.7}%
+\contentsline {subsubsection}{Reinforcement Learning Methodology}{6}{section*.8}%
+\contentsline {subsubsection}{Assumptions}{6}{section*.9}%
+\contentsline {section}{\numberline {1.1}Thesis Statement}{7}{section.1.1}%
+\contentsline {chapter}{\numberline {2}Related Works}{8}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Theoretical Framework}{8}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Reinforcement Learning as a Policy Discovery Method}{10}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Framing Stand Management as a Sequential, Uncertain Process}{10}{subsection.2.1.2}%
+\contentsline {section}{\numberline {2.2}Current State of Knowledge}{11}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Net Present Value and Land Expectation Value}{11}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Stochastic Forest Disturbance Modeling}{13}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Stand-Level Optimization Practices}{14}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Markov Decision Processes in Forest Modeling}{14}{subsection.2.2.4}%
+\contentsline {subsection}{\numberline {2.2.5}Reinforcement Learning in Forest Management}{15}{subsection.2.2.5}%
+\contentsline {section}{\numberline {2.3}Research Gaps}{16}{section.2.3}%
+\contentsline {chapter}{\numberline {3}Methods}{17}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Research Design}{17}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Disturbance Modeling}{20}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Economics and Reward Structure}{22}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Risk-Neutral and Risk-Sensitive Objectives}{22}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Reinforcement Learning Algorithms}{23}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Evaluation Metrics}{23}{section.3.6}%
+\contentsline {chapter}{\numberline {4}Results}{25}{chapter.4}%
+\contentsline {chapter}{\numberline {5}Discussion}{26}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Synthesis of Findings}{26}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Relation to Research Questions}{26}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Implications of Results}{26}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Limitations of Study}{26}{section.5.4}%
+\contentsline {chapter}{\numberline {6}Conclusion}{27}{chapter.6}%
+\contentsline {chapter}{References}{28}{chapter*.10}%
+\par \vspace {6\p@ }
+\noindent {\sc Appendix}
+\vspace {-3\p@ }
+\contentsline {chapter}{\numberline {A}Appendix Title}{32}{chapter.1}%
