@@ -233,6 +233,7 @@ class PMRCModel:
     }
 
     def predict_diameter_percentiles(
+        self,
         ba: float,
         tpa: float,
         region: Region,
