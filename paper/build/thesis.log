@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.12.21)  28 JAN 2026 06:02
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.12.21)  4 FEB 2026 08:43
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -549,7 +549,6 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 48
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
 Package hyperref Info: Link coloring OFF on input line 70.
- (build/thesis.out) (build/thesis.out)
 \@outlinefile=\write4
 \openout4 = `thesis.out'.
 
@@ -589,31 +588,32 @@ Package hyperref Warning: bookmark level for unknown pseudochapter defaults to 0
 
 [5
 
-] (build/thesis.toc
-
-[6
-
-])
+]
+No file thesis.toc.
 \tf@toc=\write5
 \openout5 = `thesis.toc'.
 
 
 
-[7] (build/thesis.lof)
+[6
+
+]
+No file thesis.lof.
 \tf@lof=\write6
 \openout6 = `thesis.lof'.
 
 
 
-[8
+[7
 
-] (build/thesis.lot)
+]
+No file thesis.lot.
 \tf@lot=\write7
 \openout7 = `thesis.lot'.
 
 
 
-[9
+[8
 
 ]
 Chapter 1.
@@ -622,6 +622,10 @@ Chapter 1.
 [1
 
 ]
+
+LaTeX Warning: Citation 'harrinsonYieldPredictionGrowth1996' on page 2 undefined on input line 117.
+
+
 
 [2]
 
@@ -642,11 +646,21 @@ Overfull \hbox (138.26463pt too wide) in paragraph at lines 126--127
 
 [6]
 Chapter 2.
-<figs/agent_env_loop_barto_rl.png, id=223, 264.99pt x 99.87312pt>
-File: figs/agent_env_loop_barto_rl.png Graphic file (type png)
-<use figs/agent_env_loop_barto_rl.png>
-Package pdftex.def Info: figs/agent_env_loop_barto_rl.png  used on input line 200.
-(pdftex.def)             Requested size: 264.98935pt x 99.87288pt.
+
+LaTeX Warning: File `figs/agent_env_loop_barto_rl.png' not found on input line 200.
+
+
+/home/ChazMerritt/StochasticStandSim/paper/thesis.tex:200: Package pdftex.def Error: File `figs/agent_env_loop_barto_rl.png' not found: using draft setting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.200 ...raphics{figs/agent_env_loop_barto_rl.png}
+                                                  
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
@@ -656,7 +670,7 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 
 ]
 
-[8 <./figs/agent_env_loop_barto_rl.png>]
+[8]
 
 [9]
 
@@ -669,7 +683,7 @@ LaTeX Warning: `h' float specifier changed to `ht'.
 [13]
 
 [14]
-Overfull \hbox (4.09148pt too wide) in paragraph at lines 329--330
+Overfull \hbox (4.09148pt too wide) in paragraph at lines 330--331
 []\OT1/cmr/m/n/12 ``Optimizing high-dimensional stochastic forestry via rein-force-ment learning'' ([]Tahvonen
  []
 
@@ -686,102 +700,13 @@ Chapter 3.
 [17]
 
 [18]
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-[]\OT1/cmr/bx/n/10.95 Jump Kernel
- []
+<figs/stochastic_growth_by_catastrophe_1.png, id=209, 642.84164pt x 718.72514pt>
+File: figs/stochastic_growth_by_catastrophe_1.png Graphic file (type png)
+<use figs/stochastic_growth_by_catastrophe_1.png>
+Package pdftex.def Info: figs/stochastic_growth_by_catastrophe_1.png  used on input line 363.
+(pdftex.def)             Requested size: 469.75499pt x 525.2243pt.
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-[]\OT1/cmr/bx/n/10.95 Important Con-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-\OT1/cmr/bx/n/10.95 di-tioning Stand
- []
-
-
-Underfull \hbox (badness 4084) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 3--8 yr to resume
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 1--80% basal area
- []
-
-
-Underfull \hbox (badness 1496) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 Fuel load, pre-vious
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 thin-ning his-tory,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 Pest Out-break
- []
-
-
-Underfull \hbox (badness 1789) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 5--15 yr for regen-
- []
-
-
-Underfull \hbox (badness 3118) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 host den-sity, basal
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 Planned removal
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 of mer-chantable
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 Immediate struc-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 tural change; full
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 growth com-pen-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 sa-tion within 2--5
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 yr depending on
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 385--385
-[]\OT1/cmr/m/n/10.95 Minimum 25% of
- []
-
-
-Underfull \hbox (badness 1496) in paragraph at lines 385--385
-\OT1/cmr/m/n/10.95 stand BA, 5 years
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 409--409
+Underfull \hbox (badness 10000) in paragraph at lines 407--407
 []\OT1/cmr/m/n/10.95 Pre-Commercial
  []
 
@@ -789,7 +714,7 @@ Underfull \hbox (badness 10000) in paragraph at lines 409--409
 
 [19]
 
-[20]
+[20 <./figs/stochastic_growth_by_catastrophe_1.png>]
 
 [21]
 
@@ -797,15 +722,15 @@ Underfull \hbox (badness 10000) in paragraph at lines 409--409
 
 [23]
 Chapter 4.
-LaTeX Font Info:    Trying to load font information for OML+cmr on input line 485.
+LaTeX Font Info:    Trying to load font information for OML+cmr on input line 483.
 (/usr/local/texlive/2024/texmf-dist/tex/latex/base/omlcmr.fd
 File: omlcmr.fd 2024/11/19 v2.5n Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OML/cmr/bx/n' in size <12> not available
-(Font)              Font shape `OML/cmm/b/it' tried instead on input line 485.
+(Font)              Font shape `OML/cmm/b/it' tried instead on input line 483.
 
 
-LaTeX Warning: Citation '' on page 24 undefined on input line 485.
+LaTeX Warning: Citation '' on page 24 undefined on input line 483.
 
 
 
@@ -837,7 +762,7 @@ Chapter 6.
 pdfTeX warning (ext4): destination with the same identifier (name{chapter.1}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.498 \chapter{Appendix Title}
+l.496 \chapter{Appendix Title}
                               
 Appendix A.
 
@@ -849,25 +774,43 @@ Appendix A.
 LaTeX2e <2024-11-01> patch level 1
 L3 programming layer <2024-11-02>
  ***********
-Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: C4098ADF00A33013663FEAB18B078FE0;4009.
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package rerunfilecheck Warning: File `thesis.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `thesis.out':
+(rerunfilecheck)             Before: <no file>
+(rerunfilecheck)             After:  C4098ADF00A33013663FEAB18B078FE0;4009.
+
+Package biblatex Warning: Please (re)run Biber on the file:
+(biblatex)                thesis
+(biblatex)                and rerun LaTeX afterwards.
+
 Package logreq Info: Writing requests to 'thesis.run.xml'.
 \openout1 = `thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 18051 strings out of 473330
- 316204 string characters out of 5719768
- 1143976 words of memory out of 5000000
- 40882 multiletter control sequences out of 15000+600000
+ 17987 strings out of 473330
+ 316436 string characters out of 5719768
+ 1137945 words of memory out of 5000000
+ 40827 multiletter control sequences out of 15000+600000
  567082 words of font info for 69 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 66i,12n,81p,2059b,1699s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 66i,11n,81p,2059b,1699s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on build/thesis.pdf (41 pages, 293702 bytes).
+Output written on build/thesis.pdf (40 pages, 509705 bytes).
 PDF statistics:
- 541 PDF objects out of 1000 (max. 8388607)
- 456 compressed objects within 5 object streams
- 109 named destinations out of 1000 (max. 500000)
- 206 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 432 PDF objects out of 1000 (max. 8388607)
+ 349 compressed objects within 4 object streams
+ 110 named destinations out of 1000 (max. 500000)
+ 6 words of extra memory for PDF output out of 10000 (max. 10000000)
 

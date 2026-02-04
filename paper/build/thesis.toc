@@ -1,6 +1,6 @@
 \contentsline {pseudochapter}{Acknowledgments}{v}{chapter*.3}%
-\contentsline {pseudochapter}{List of Figures}{viii}{chapter*.4}%
-\contentsline {pseudochapter}{List of Tables}{ix}{chapter*.5}%
+\contentsline {pseudochapter}{List of Figures}{vii}{chapter*.4}%
+\contentsline {pseudochapter}{List of Tables}{viii}{chapter*.5}%
 \par \vspace {6\p@ }
 \noindent {\sc Chapter}
 \vspace {-3\p@ }

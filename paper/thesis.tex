@@ -71,7 +71,7 @@
 \pagenumbering{roman}
 
 \begin{abstract}
-Forest environments are complex and stochastic, yet many growth models are deterministic and explore only one possible future. We propose a framework rooted in Markov Decision Processes (MDPs) to address this gap. Our approach integrates a stochastic simulation environment with a Markovian agent that learns near-optimal management policies via reinforcement learning. By explicitly representing noise and uncertainty in our model, we aim to reduce shortsightedness in timber management models and move towards more resilient, adaptive planning.
+Forest environments are complex and stochastic, yet many growth models are deterministic and explore only one possible future. We propose a framework rooted in Markov Decision Processes (MDPs) to address this gap. Our approach integrates a stochastic simulation environment with a Markovian process that estimates the stand value function via backwards induction. By explicitly representing noise and uncertainty in our model, we aim to reduce shortsightedness in timber management models and move towards more resilient, adaptive planning.
 \end{abstract}
 
 \maketitle    % Creates title page, copyright page if any, and approval page.
@@ -94,7 +94,7 @@ This work was supported by the U.S. Department of Agriculture, Forest Service, S
 
 \chapter{Introduction}
 \subsection{Background and Context}
-Forest management decisions often span long time horizons, necessitating methods that anticipate future conditions and trade-offs. Yet most current stand-level planning models are deterministic, assuming a single, idealized trajectory of forest development. 
+Forest management decisions span long time horizons, necessitating methods that anticipate future conditions and trade-offs. Yet most current stand-level planning models are deterministic, assuming a single, idealized trajectory of forest development. 
 These models typically use optimization techniques to identify regimes that maximize a static objective (or set of objectives), most often timber volume or forest structure goals, though stands may also be managed for carbon sequestration, wildlife diversity, 
 or recreation. In doing so, they often overlook a critical reality: forest stands are not deterministic environments. Rather, forest stands are subject to stochastic and dynamic processes. Growth trajectories are influenced not only by competition and ecological 
 succession, but also by random disturbances such as wildfires, windthrow, ice storms, and pest outbreaks. These events are often abrupt, severe, and difficult to predict. Their effects propagate over time, altering successional pathways and disrupting static 
@@ -112,31 +112,31 @@ Instead, the simulation environment serves as a modular testbed for evaluating d
 Using adjustable parameters for disturbance frequency, and a novel envelope-based method for the impact of disturbances over time, we construct a flexible modeling environment in which different risk scenarios can be explored and evaluated against non-stochastic 
 baselines.
 
-Within this environment, we integrate a reinforcement learning (RL) agent to explore risk-sensitive management strategies and their effects. RL is well suited for this task due to its ability to discover adaptive strategies through iterative interaction with 
-complex, uncertain systems. While RL has deep roots in operations research and dynamic programming, it remains underutilized in forestry. Our approach bridges this gap by combining a stand-level proof-of-concept simulation with adaptive, policy-learning methods 
-capable of learning a policy that is responsive to the severity and likelihood of disturbance events for a given timestep.
+Within this environment, we construct a finite horizon MDP and apply backwards induction to explore risk-sensitive management strategies and their effects on the value of a stand at the end of a rotation. MDPs are well suited for this task due to their ability to 
+discover adaptive strategies through iterative interaction with complex, uncertain systems. While MDPs have deep roots in operations research and dynamic programming, they remain underutilized in forestry. Our approach bridges this gap by combining a 
+stand-level stochastic simulation (a wrapper on \textcite{harrinsonYieldPredictionGrowth1996}) with adaptive, policy-learning methods that are responsive to the severity and likelihood of disturbance events for a given timestep.
 
 By explicitly incorporating randomness into the modeling process, our framework demonstrates how adaptive management strategies can be simulated and assessed in a stochastic setting, with the aim of producing approaches that are not only economically sound, but 
-also resilient to the uncertainty facing forest ecosystems.
+also resilient to the uncertainty facing forest ecosystems. 
 
 This thesis addresses several gaps: 
 \begin{itemize}
 \item The ubiquitous tendency to sidestep uncertainty in deterministic optimization models which leave out many probabilistic events that are relevant to growth but complicated to model as described by \textcite{stevensOptimalHarvestRates1986}.
-\item Under utilization of RL and MDPs in forest management despite their strengths in adaptive decision making.
-\item The missing link between tried and true empirical stand growth models \textcite{harrinsonYieldPredictionGrowth1996} and stochastic models that include both disturbance and growth factors.
+\item Under utilization of MDPs in forest management despite their strengths in adaptive decision making.
+\item The missing link between tried and true empirical stand growth models \textcite{harrinsonYieldPredictionGrowth1996} and stochastic models that include both chaotic disturbances and growth factors.
 \end{itemize}
-We propose a framework that embraces stochasticity from the outset which has Markov Decision Processes at it's core and uses RL to discover adaptive management policies, offering an alternative to the yearly modeling reset and advancing the methodological toolkit 
+We propose a framework that embraces stochasticity from the outset which has Markov Decision Processes at it's core and uses backwards induction to discover adaptive management policies, offering an alternative to the yearly modeling reset and advancing the methodological toolkit 
 available to forest managers by providing a better window into uncertain futures.
 
-This thesis investigates how risk-sensitive reinforcement learning can be used to design adaptive forest stand management policies under stochastic disturbance regimes. It focuses on the following core questions.
+This thesis investigates how MDPs can be used to design adaptive forest stand management policies under stochastic disturbance regimes. It focuses on the following core questions.
 
 \subsubsection{Stochastic vs. Deterministic Planning}
-    \textbf{Can reinforcement learning discover policies that match or outperform deterministic strategies across a range of forest scenarios?} \\
-    This question evaluates whether RL-based policies can serve as practical alternatives to conventional practices, such as following a fixed rotation schedule. % TODO: Answer these questions
+    \textbf{Can MDPs discover policies that match or outperform deterministic strategies across a range of forest scenarios?} \\
+    This question evaluates whether MDP-based policies can serve as practical alternatives to conventional practices, such as following a fixed rotation schedule. % TODO: Answer these questions
 
-    \textbf{Do outcomes change when one moves from a deterministic stand management plan to an adaptive, reinforcement learning-based policy under stochastic conditions?} \\
+    \textbf{Do outcomes change when one moves from a deterministic stand management plan to an adaptive, MDP-based policy under stochastic conditions?} \\
     This question assesses the degree of variability in outcomes when shifting from fixed, theoretically optimal, deterministic strategies to adaptive policies that attempt to account for the uncertainty of future disturbances. Deterministic plans are static,
-    while adaptive policies driven by RL are dynamic and responsive to the conditions of the environment and the outcomes change dramatically depending on both the context of the environment itself, and the preferences of the agent (such as a forest manager
+    while adaptive policies driven by MDPs are dynamic and responsive to the conditions of the environment and the outcomes change dramatically depending on both the context of the environment itself, and the preferences of the agent (such as a forest manager
     or land owner) in the system.
 
     \textbf{Do changes in disturbance frequency and severity influence optimal harvest age and consequently, the structure of adaptive management policies?} \\
@@ -152,27 +152,27 @@ This thesis investigates how risk-sensitive reinforcement learning can be used t
     \textbf{What, if any, generalizations of the MDP are suitable to represent the process of forest management?} \\
     We consider the use of Semi-MDPs, Factored MDPs, and Partially Observable Markov Decision Processes (POMDPs) to represent the process of forest management.
     
-Together, these questions aim to clarify the role RL can play in adaptive, risk-aware stand-level forest management.
+Together, these questions aim to clarify the role MDPs, and more generally Reinforcement Learning (RL), can play in adaptive, risk-aware stand-level forest management.
 
 \subsubsection{Assumptions}
 Every model has underlying assumptions, and it's worth discussing them early and directly. First and foremost, while the methods presented are general, almost all of this work was conducted with managed, even-aged, loblolly pine (\textit{Pinus taeda}) plantations 
 in mind. This dramatically simplifies the effort expended on factors such as species composition and competition. As such, our tree growth dynamics are modeled using region-specific equations provided by the Plantation Management Research Cooperative (PMRC). 
 For the complete formulation, see \textcite{pmrcHarrisonYieldPredictionGrowth1996}.
 
-All stochastic elements (e.g., disturbance probabilities) are stationary within a scenario. The distribution parameters are chosen at the beginning and held fixed through the episode. Timber prices, discount rates, and management costs are also stationary and 
+All stochastic elements (e.g., disturbance probabilities) are stationary within a scenario. The distribution parameters are chosen at the beginning and held fixed through the episode. Discount rates, and management costs are also stationary and 
 scenario-defined, they don’t evolve stochastically within a simulation. Stationarity is an important mathematical assumption for Markov processes, and the goal of this work is not to model the disturbance probabilities or economic factors themselves, but to 
 understand the effect of these stochastic elements on stand management. 
 
 Disturbances may have lagged effects (e.g., pest outbreaks causing gradual decline), which are captured through recovery functions but assumed parametric and consistent. In this work, disturbances do not alter future disturbance probabilities (e.g., one fire 
-doesn’t reduce or increase the chance of another, except indirectly through changed stand state). When disturbances occur, a salvage fraction is assumed available as revenue. We don’t model harvest scheduling constraints, road access, policy restrictions, 
+doesn’t reduce or increase the chance of another, except indirectly through changed stand state). When disturbances occur, a salvage fraction of 50\% is assumed available as revenue. We don’t model harvest scheduling constraints, road access, policy restrictions, 
 or multi-stand interactions, as this is framed as a single stand modeling problem for tractability.
 
-The problem is cast as an MDP. Each next state depend only on the current state and action to satisfy the Markov property. Note that the Markov property may not strictly hold in the management of real forest stands, as actions may be applied at different times 
+The problem is cast as an MDP. Each next state depends only on the current state and action to satisfy the Markov property. Note that the Markov property may not strictly hold in the management of real forest stands, as actions may be applied at different times 
 or have effects that compound over time, but it is a useful abstraction for the purposes of this work.
 
 \section{Thesis Statement}
-This thesis finds that reinforcement learning, applied to a MDP model of forest stand dynamics, can produce adaptive management policies that are comparable to the performance of traditional deterministic methods, while offering greater resilience to changing 
-risk and incomplete information.
+This thesis finds that dynamic programming in the form of backwards induction, applied to a MDP model of forest stand dynamics, can produce adaptive management policies that are comparable to the performance of traditional deterministic methods, such as fixed rotation schedules, 
+while offering greater resilience to changing risk and incomplete information.
 
 %TODO: I will reassess this at the end of the thesis to make sure it fits with my results, as per the ``Writing Backwards'' technique described by \textcite{HowWriteBackwards1996}.
 
@@ -181,7 +181,7 @@ risk and incomplete information.
 \section{Theoretical Framework}
 
 This thesis is grounded in the theory of Markov Decision Processes (MDPs). MDPs formalize the problem of sequential decision-making under uncertainty, offering a mathematical structure in which agents take actions, receive rewards, and observe the consequences 
-over time. Markov processes are subject to the Markov assumption, which states that Markov processes form the backbone of Reinforcement Learning (RL), by giving a definitive structure to the environment within which a learning agent can be embedded. 
+over time. Markov processes are subject to the Markov assumption, which states that a Markovian process is one in which the next state is entirely determined by the current state and action, giving a definitive structure to the environment within which a learning agent can be embedded. 
 Any Markov Decision Process (MDP) can be defined by the 5-tuple:
 \[
 \{\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma\}
@@ -202,9 +202,11 @@ where:
     \label{fig:Agent-Environment-MDP}
 \end{figure}
 
-Forest management, particularly at the stand level, can be naturally modeled within this structure. At each timestep, a decision-maker observes a forest stand's condition (e.g., age, biomass, disturbance status..., The full state vector is enumerated in the 
-methodology section) and selects a management action such as thinning, harvesting, or applying a treatment. The stand then evolves stochastically based on ecological processes and external disturbances like fire, pests, or windthrow. Rewards are typically related 
-to timber value, ecosystem services, or long-term economic returns and are accrued based on both the current state and the chosen action. 
+Furthermore, for finite-horizon problems, we additionally specify a horizon $T$, the number of decision steps left until termination. This is an important parameter for MDPs, as the amount of steps left in your planning horizon affects the overall policy strongly.
+Infinite-horizon MDPs, which are not the focus of this work, always converge to a unique policy. In forestry, we are interested in the fixed rotation length befitting southen pine plantations, and so work with a fixed horizon roughly comparable to this timeframe.
+
+Forest management, particularly at the stand level, can be naturally modeled within this structure. At each timestep, a decision-maker observes a forest stand's condition (e.g., trees per acre, basal area, disturbance status, etc.) and can decide upon a course
+of action. Rewards are typically related to timber financial value, ecosystem services, or long-term economic returns and are accrued based on both the current state and the chosen action. 
 
 Generic MDPs assume full observability of the state of the system. In the context of forest management, this might include full knowledge of the condition of the stand, the exact probabilities of disturbance, etc. However, in real-world forest applications, 
 such perfect information is rarely available. For example, managers often do not know the precise likelihood of a fire occurring in the coming year, but may infer increased risk based on weather patterns or historical fire activity. Furthermore, to satisfy the 
@@ -217,8 +219,7 @@ current work.
 
 \subsection{Reinforcement Learning as a Policy Discovery Method}
 
-Reinforcement learning (RL) is a family of methods for solving MDPs through interaction with the environment. Unlike other approaches that require explicit models of transition and reward functions, RL methods can develop near-optimal policies through 
-trial-and-error, using simulated experiences. This makes RL well-suited for settings where the environment is complex or partially known, and where traditional optimization techniques struggle to scale or adapt.
+Reinforcement learning (RL) is a family of methods for solving MDPs through interaction with the environment. Unlike other approaches that require explicit models of transition and reward functions, this makes RL well-suited for settings where the environment is complex or partially known, and where traditional optimization techniques struggle to scale or adapt.
 
 In this thesis, RL is used to discover adaptive forest management policies in a simulated environment that includes stochastic disturbance events, a growth model for pine plantations, and a dynamic methodology for calculating stand value without 
 adherence to a fixed rotation schedule. The use of RL allows us to explore how agents learn to act under this uncertainty, how their behavior compares to deterministic planning baselines. Moreover, we can compare agents by their objectives and risk 
@@ -230,7 +231,7 @@ Classical forest planning models often assume static, deterministic conditions a
 disturbance dynamics. By contrast, modeling stand management as an MDP allows for adaptation: agents revise their strategies based on new information, changing risk, and evolving forest conditions. They retain the ability to change their 
 policy online with respect to their belief state.
 
-This theoretical framing supports the thesis's central hypothesis; that reinforcement learning can be used to learn adaptive policies that outperform or match conventional approaches, especially under stochastic and partially observable risk conditions. It also 
+This theoretical framing supports the thesis's central hypothesis; that MDPs can be used to learn adaptive policies that are competitive with conventional approaches, especially under stochastic and partially observable risk conditions. It also 
 sets the foundation for the evaluation of policy robustness, information value, and risk responsiveness presented in the following chapters.
 
 \section{Current State of Knowledge}
@@ -337,7 +338,7 @@ In summary, prior applications of RL in natural resource management demonstrate:
 \chapter{Methods}
 
 \section{Research Design}
-Reinforcement learning requires only two elements: an agent capable of learning, and an environment that the agent can interact with and receive rewards from. In this modeling framework, the agent represents the decision-making entity, such as a landowner or manager, with authority to select management actions at each timestep. The problem of where to apply treatments is left for future work, as we consider treatments applied to the whole stand only. These treatments can be considered as the set of actions available to the agent in each timestep. Fertilization with phosphorus and nitrogen at the average regional rate of 169 lbs/acre \textcite{costsMaggardNatzke}, and thinning as a percentage of standing volume (assumed to be thinning from below), are our primary targets, although we also consider preventative actions such as the application of pesticides and prescribed fire to manage risk. Each action comes with a predefined cost which may or may not be offset by potential revenue. Market fluctuations and management costs are not modeled separately. We use the work of \textcite{costsMaggardNatzke} to assign reasonable costs to the various management actions, which only modulate with static drift between historical highs and lows. We use data from TimberMart-South to assign reasonable revenues. In our model, the agent attempts to learn an optimal policy (often denoted as $\pi^*$, a set of management actions for a given stand and time horizon) through interacting with an environment. This learning takes the form of the specific RL algorithm used, such as proximal policy optimization (PPO) or deep deterministic policy gradient (DDPG). We test several such learning algorithms from the work of \textcite{stable-baselines3} who provide state of the art implementations of these RL algorithms.
+Designing an MDP requires only two elements: an agent capable of learning, and an environment that the agent can interact with and receive rewards from. In this modeling framework, the agent represents the decision-making entity, such as a landowner or manager, with authority to select management actions at each timestep. The problem of where to apply treatments is left for future work, as we consider treatments applied to the whole stand only. These treatments can be considered as the set of actions available to the agent in each timestep. Fertilization with phosphorus and nitrogen at the average regional rate of 169 lbs/acre \textcite{costsMaggardNatzke}, and thinning as a percentage of standing volume (assumed to be thinning from below), are our primary targets, although we also consider preventative actions such as the application of pesticides and prescribed fire to manage risk. Each action comes with a predefined cost which may or may not be offset by potential revenue. Market fluctuations and management costs are not modeled separately. We use the work of \textcite{costsMaggardNatzke} to assign reasonable costs to the various management actions, which only modulate with static drift between historical highs and lows. We use data from TimberMart-South to assign reasonable revenues. In our model, the agent attempts to learn an optimal policy (often denoted as $\pi^*$, a set of management actions for a given stand and time horizon) through interacting with an environment. This learning takes the form of the specific RL algorithm used, such as proximal policy optimization (PPO) or deep deterministic policy gradient (DDPG). We test several such learning algorithms from the work of \textcite{stable-baselines3} who provide state of the art implementations of these RL algorithms.
 
 For our environment, we leveraged current tools in the Python programming ecosystem to rigorously define both the continuous nature of our possible states $\mathcal{S}$ as well as the probability function that governs the state-to-state transitions, $\mathcal{P}(s'|s,a)$. We implemented an environment to mirror the dynamics of a timber stand using the popular RL library Gymnasium \parencite{towers2024gymnasiumstandardinterfacereinforcement}, a community-maintained fork of OpenAI's Gym library. Gymnasium provides us with a standard API that makes integration with Stable-baselines3 \parencite{stable-baselines3} seamless. 
 
@@ -355,39 +356,36 @@ The economics module is responsible for calculating the present value of the sta
 The disturbance module is responsible for modulating the growth signal from $\mathcal{S}_{t}$ to $\mathcal{S}_{t+1}$ when a disturbance has occurred either as a deliberate action (like pre-commercial thinning) or as a stochastic disturbance such as a wind storm. We have defined several such post-disturbance envelopes as expert priors. Practically speaking, it is very rare to measure stands that have been catastrophically damaged by a disturbance. Consequently, modeling the state of the stand immediately following such a disturbance is a problem in which we are limited by the availability of data. Some long-scale longitudinal studies such as \textcite{woodsKernLongStudy} provide insight into the effect of moderate scale disturbances on a mixed species, old-growth plot primarily consisting of sugar maple (\textit{Acer saccharum}) and eastern hemlock (\textit{Tsuga canadensis}). Though this plot is substantially different both in terms of species composition, and management conditions from the calibration of our model which is conditioned on single species loblolly pine stands in a plantation environment, we nevertheless find their work compelling for its long-term single-tree level data with moderate disturbance effects caused by a severe thunderstorm.
 
 \section{Disturbance Modeling}
-We model disturbances as stochastic jump events layered onto deterministic growth. Each disturbance type $k$ (e.g., fire, windthrow, pest outbreak) is associated with an annual hazard rate $\lambda_k(s,a)$, which may depend on the current state of the stand $s$ and the management action $a$. At each timestep of length $\Delta t=1$ year, the probability of a disturbance occurring is
+We model disturbances as stochastic jump events layered onto deterministic growth. We set two disturbance types, chronic and catastrophic, each associated with 3 levels of likelihood to assess how disparate beliefs on disturbance likelihood on decision making and expected stand value.
 
-$$
-p_k \;=\; 1 - \exp\!\big(-\lambda_k(s,a)\,\Delta t\big)
-$$
-
-If an event occurs, the stand transitions via a jump kernel $J_k$, which instantaneously modifies state variables such as standing volume or stem density. We parameterize the severity distribution of each jump using expert priors and historical ranges, but we leave calibration flexible so one may select upper and lower bounds around known averages to represent alternative futures or risk scenarios. Disturbances are defined as any event that cause an immediate reduction in viable timber volume in the stand and cause some long term effects on the health and growth activity in the stand. This is an intractably large set, from which we only explicitly model fire, windthrow, pest outbreak, and thinning. 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figs/stochastic_growth_by_catastrophe_1.png}
+    \caption{Stochastic growth by catastrophe probability.}
+    \label{fig:stochastic-growth-catastrophe}
+\end{figure}
 
 \begin{table}[htbp]
-\centering
-\caption{Disturbances in Managed Southern Pine Stands}
-\small  % reduce font size
-\renewcommand{\arraystretch}{1.1}  % tighten row spacing
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{ |p{3.5cm}||p{3.5cm}|p{3.5cm}|p{3.5cm}| }
- \hline
- \textbf{Disturbance Type} & \textbf{Jump Kernel Range (Severity)} & \textbf{Years to End of Effect (Longevity)} & \textbf{Important Conditioning Stand Variables} \\
- \hline
- Wind Event & 5--90\% merchantable volume loss & 3--8 yr to resume normal growth; 10+ yr for structural normalization & Height, age, density \\
- \hline
- Fire Event & 1--80\% basal area loss (0--100\%) & 2--6 yr for basal area and growth recovery; full canopy structure in 8--12 yr & Fuel load, previous thinning history, dominant height \\
- \hline
- Pest Outbreak (e.g., Southern Pine Beetle) & 10--80\% mortality & 5--15 yr for regeneration and volume recovery; 20+ yr to restore pre-outbreak basal area & Stand age ($\geq$15 yr), host density, basal area, recent thinning or storm damage \\
- \hline
- Thinning & Planned removal of merchantable volume & Immediate structural change; full growth compensation within 2--5 yr depending on residual density & Minimum 25\% of stand BA, 5 years between thinnings. \\
- \hline
-\end{tabular}
-}
+    \centering
+    \caption{Disturbance Risk Profiles}
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{ |l|c|c|c| }
+     \hline
+     \textbf{Disturbance Type} & \textbf{Low Risk} & \textbf{Medium Risk} & \textbf{High Risk} \\
+     \hline
+     Chronic (annual) & 1\% & 3\% & 5\% \\
+     \hline
+     Catastrophic (annual) & 0.5\% & 2\% & 5\% \\
+     \hline
+    \end{tabular}
+    \caption*{\small Chronic disturbances cause gradual volume loss (5--15\%); catastrophic events cause severe loss (50--90\%) with multi-year recovery.}
+    \label{tab:disturbance-risk-profiles}
 \end{table}
 
 \begin{table}[htbp]
 \centering
-\caption{Management Action Costs}
+\caption{Management Action Costs (TK: Actions severely walked back)}
 \small  % reduce font size
 \renewcommand{\arraystretch}{1.1}  % tighten row spacing
 \resizebox{\textwidth}{!}{%
@@ -430,7 +428,7 @@ If an event occurs, the stand transitions via a jump kernel $J_k$, which instant
 \end{table}
 
 
-To capture delayed consequences, each disturbance (including both random disturbances and deliberate actions such as pre-commercial thinning) also activates an envelope function $h_k(\tau)$ that modulates growth dynamics for years following the initial shock. This envelope, which we refer to as the ADSR (attack–decay–sustain–release) envelope, represents processes such as reduced growth after thinning, gradual pest mortality, or other long-term loss due to disturbance. Thus, the post-disturbance growth increment is a combination of the baseline growth module and the cumulative disturbance envelopes.
+To capture delayed consequences, each disturbance (including both random disturbances and deliberate actions such as pre-commercial thinning) the post-disturbance growth increment is a combination of the baseline growth module and the stochastic wrapper.
 
 \section{Economics and Reward Structure}
 The economics module translates state and action variables into monetary values. Revenues are computed from harvested product classes (pulp, chip, sawtimber), while costs are assigned to treatments such as fertilization, thinning, prescribed fire, and pesticide application. Prices and treatment costs are drawn from \textcite{costsMaggardNatzke} and related market sources, and remain fixed over the 100-year horizon. The per-step reward is then
