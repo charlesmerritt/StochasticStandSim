@@ -276,98 +276,89 @@ def plot_policy_regime_comparison(save_path: str = "plots/mdp_policy_regimes.png
 
 
 def plot_sample_trajectories(save_path: str = "plots/mdp_sample_trajectories.png") -> None:
-    """Plot sample stand trajectories under different risk levels."""
-    print("Generating sample trajectories...")
+    """Plot mean stand trajectories under different risk levels.
+    
+    Simulates 250 trajectories per risk level and plots the mean.
+    """
+    print("Generating sample trajectories (250 per risk level)...")
     
     config = BuongiornoConfig()
     pmrc = PMRCModel(region=config.region)
     
-    n_trajectories = 5
+    n_trajectories = 250
     n_years = 30
     
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    fig.suptitle("Sample Stand Trajectories Under Optimal Policy", fontsize=14)
+    fig.suptitle("Mean Stand Trajectories by Risk Level (n=250)", fontsize=14)
+    
+    risk_colors = {"low": "green", "medium": "orange", "high": "red"}
     
     for col, risk_level in enumerate(["low", "medium", "high"]):
         profile = get_risk_profile(risk_level)
         stoch = StochasticPMRC.from_config(pmrc, profile.noise, profile.disturbance)
         
-        # Solve MDP
-        solution, P, _ = solve_mdp_for_risk_level(risk_level, config, n_samples=300, seed=42)
-        discretizer = BuongiornoDiscretizer(config, pmrc)
-        
-        # Simulate trajectories
-        ba_trajectories = []
-        harvest_times = []
+        # Simulate trajectories (no MDP - just growth with deterministic thinning)
+        all_ba = []
+        all_tpa = []
         
         for traj_idx in range(n_trajectories):
             rng = np.random.default_rng(seed=42 + traj_idx)
             
             # Start from young stand
+            k, m = pmrc.k, pmrc.m
+            age = 1.0
+            hd = config.si25 * ((1 - np.exp(-k * age)) / (1 - np.exp(-k * 25.0))) ** m
             state = StandState(
-                age=1.0, hd=10.0, tpa=config.initial_tpa, ba=20.0,
+                age=age, hd=hd, tpa=config.initial_tpa, ba=5.0,
                 si25=config.si25, region=config.region
             )
             
             ba_history = [state.ba]
-            harvest_year = None
+            tpa_history = [state.tpa]
+            thinned = False
             
-            for year in range(n_years):
-                # Discretize and get action
-                discrete = discretizer.discretize(state, disturbed=False, price=PriceState.MEDIUM)
-                s_idx = discrete.to_index()
-                action = Action(solution.policy[s_idx])
+            for year in range(1, n_years + 1):
+                # Deterministic thinning at age 15 if BA > threshold
+                if year == 15 and state.ba > config.auto_thin_threshold and not thinned:
+                    from core.stochastic_stand import thin_to_residual_ba_smallest_first
+                    state, _ = thin_to_residual_ba_smallest_first(state, config.auto_thin_target)
+                    thinned = True
                 
-                if action == Action.HARVEST:
-                    harvest_year = year
-                    # Reset
-                    state = StandState(
-                        age=1.0, hd=10.0, tpa=config.initial_tpa, ba=20.0,
-                        si25=config.si25, region=config.region
-                    )
-                else:
-                    # Auto-thin only at year 15 if BA > threshold
-                    if year == 15 and state.ba > config.auto_thin_threshold:
-                        from core.stochastic_stand import thin_to_residual_ba_smallest_first
-                        state, _ = thin_to_residual_ba_smallest_first(state, config.auto_thin_target)
-                    
-                    # Grow
-                    state = stoch.sample_next_state(state, dt=1.0, rng=rng)
+                # Grow
+                state = stoch.sample_next_state(state, dt=1.0, rng=rng)
                 
                 ba_history.append(state.ba)
+                tpa_history.append(state.tpa)
             
-            ba_trajectories.append(ba_history)
-            harvest_times.append(harvest_year)
+            all_ba.append(ba_history)
+            all_tpa.append(tpa_history)
         
-        # Plot BA trajectories
+        all_ba = np.array(all_ba)
+        all_tpa = np.array(all_tpa)
+        years = np.arange(n_years + 1)
+        
+        color = risk_colors[risk_level]
+        
+        # Plot BA mean
         ax = axes[0, col]
-        for i, ba_hist in enumerate(ba_trajectories):
-            ax.plot(range(len(ba_hist)), ba_hist, alpha=0.7, linewidth=1.5)
-            if harvest_times[i] is not None:
-                ax.axvline(harvest_times[i], color="red", linestyle="--", alpha=0.3)
-        
-        ax.axhline(config.auto_thin_threshold, color="blue", linestyle=":", label="Thin threshold")
+        ba_mean = all_ba.mean(axis=0)
+        ax.plot(years, ba_mean, color=color, linewidth=2.5, label="Mean")
         ax.set_xlabel("Year")
         ax.set_ylabel("Basal Area (ft²/ac)")
         ax.set_title(f"{risk_level.capitalize()} Risk")
-        ax.set_ylim(0, 200)
+        ax.set_ylim(0, 180)
         ax.grid(True, alpha=0.3)
-        if col == 0:
-            ax.legend(loc="upper left")
+        ax.legend(loc="upper left")
         
-        # Plot cumulative harvests
+        # Plot TPA mean (bottom row)
         ax = axes[1, col]
-        harvest_counts = [0]
-        for year in range(1, n_years + 1):
-            count = sum(1 for h in harvest_times if h is not None and h < year)
-            harvest_counts.append(count)
-        
-        ax.fill_between(range(len(harvest_counts)), harvest_counts, alpha=0.3)
-        ax.plot(range(len(harvest_counts)), harvest_counts, linewidth=2)
+        tpa_mean = all_tpa.mean(axis=0)
+        ax.plot(years, tpa_mean, color=color, linewidth=2.5, label="Mean")
         ax.set_xlabel("Year")
-        ax.set_ylabel("Cumulative Harvests")
-        ax.set_title(f"Harvest Timing ({risk_level.capitalize()})")
+        ax.set_ylabel("Trees per Acre")
+        ax.set_title(f"TPA ({risk_level.capitalize()} Risk)")
         ax.grid(True, alpha=0.3)
+        ax.legend(loc="upper right")
     
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight")
