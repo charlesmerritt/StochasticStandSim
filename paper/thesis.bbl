@@ -1,0 +1,1307 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global}
+    \entry{altamimiLargeScaleWildfireMitigation2022}{article}{}
+      \name{author}{6}{}{%
+        {{un=0,uniquepart=base,hash=9ff682767deec4c8d838c1fe048b8887}{%
+           family={Altamimi},
+           familyi={A\bibinitperiod},
+           given={Abdulelah},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2e807e4d88bdac7739b155e4fdb07ddf}{%
+           family={Lagoa},
+           familyi={L\bibinitperiod},
+           given={Constantino},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=19f43b3ac8fa5378f0c11068546b33e6}{%
+           family={Borges},
+           familyi={B\bibinitperiod},
+           given={José\bibnamedelima G.},
+           giveni={J\bibinitperiod\bibinitdelim G\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=0e55bd12a5f9a85d00d92fff664d5d37}{%
+           family={McDill},
+           familyi={M\bibinitperiod},
+           given={Marc\bibnamedelima E.},
+           giveni={M\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=64fb674b3b49e8ab52f1802b66c82c92}{%
+           family={Andriotis},
+           familyi={A\bibinitperiod},
+           given={C.\bibnamedelimi P.},
+           giveni={C\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6d2e4a1d3735bf29b870919858d7359b}{%
+           family={Papakonstantinou},
+           familyi={P\bibinitperiod},
+           given={K.\bibnamedelimi G.},
+           giveni={K\bibinitperiod\bibinitdelim G\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{16169fa718b80fc3f0072056d88c3959}
+      \strng{fullhash}{f9193c886faaeed0bc1f7ecdcfd3d3d7}
+      \strng{bibnamehash}{f9193c886faaeed0bc1f7ecdcfd3d3d7}
+      \strng{authorbibnamehash}{f9193c886faaeed0bc1f7ecdcfd3d3d7}
+      \strng{authornamehash}{16169fa718b80fc3f0072056d88c3959}
+      \strng{authorfullhash}{f9193c886faaeed0bc1f7ecdcfd3d3d7}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Forest management can be seen as a sequential decision-making problem to determine an optimal scheduling policy, e.g., harvest, thinning, or do-nothing, that can mitigate the risks of wildfire. Markov Decision Processes (MDPs) offer an efficient mathematical framework for optimizing forest management policies. However, computing optimal MDP solutions is computationally challenging for large-scale forests due to the curse of dimensionality, as the total number of forest states grows exponentially with the numbers of stands into which it is discretized. In this work, we propose a Deep Reinforcement Learning (DRL) approach to improve forest management plans that track the forest dynamics in a large area. The approach emphasizes on prevention and mitigation of wildfire risks by determining highly efficient management policies. A large-scale forest model is designed using a spatial MDP that divides the square-matrix forest into equal stands. The model considers the probability of wildfire dependent on the forest timber volume, the flammability, and the directional distribution of the wind using data that reflects the inventory of a typical eucalypt (Eucalyptus globulus Labill) plantation in Portugal. In this spatial MDP, the agent (decision-maker) takes an action at one stand at each step. We use an off-policy actor-critic with experience replay reinforcement learning approach to approximate the MDP optimal policy. In three different case studies, the approach shows good scalability for providing large-scale forest management plans. The results of the expected return value and the computed DRL policy are found identical to the exact optimum MDP solution, when this exact solution is available, i.e., for low dimensional models. DRL is also found to outperform a genetic algorithm (GA) solutions which were used as benchmarks for large-scale model policy.}
+      \field{issn}{2624-893X}
+      \field{journaltitle}{Frontiers in Forests and Global Change}
+      \field{langid}{english}
+      \field{month}{7}
+      \field{title}{Large-{{Scale Wildfire Mitigation Through Deep Reinforcement Learning}}}
+      \field{urlday}{18}
+      \field{urlmonth}{6}
+      \field{urlyear}{2025}
+      \field{volume}{5}
+      \field{year}{2022}
+      \field{urldateera}{ce}
+      \field{pages}{734330}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.3389/ffgc.2022.734330
+      \endverb
+    \endentry
+    \entry{bettingerDensitydependentStandlevelOptimization2005}{article}{}
+      \name{author}{3}{ul=2}{%
+        {{un=0,uniquepart=base,hash=eec615cf69862a45f7f45ec985704146}{%
+           family={Bettinger},
+           familyi={B\bibinitperiod},
+           given={Pete},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d0bf9e1b7f1630cb9921bc60f5b5dd82}{%
+           family={Graetz},
+           familyi={G\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=13baa5f5fb02f6b13afbe2dc80471111}{%
+           family={Sessions},
+           familyi={S\bibinitperiod},
+           given={John},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{e44e119a35f7850fc4d08fb52e865d37}
+      \strng{fullhash}{67e0eeba4ce2849a6b69119a2d34c4db}
+      \strng{bibnamehash}{67e0eeba4ce2849a6b69119a2d34c4db}
+      \strng{authorbibnamehash}{67e0eeba4ce2849a6b69119a2d34c4db}
+      \strng{authornamehash}{e44e119a35f7850fc4d08fb52e865d37}
+      \strng{authorfullhash}{67e0eeba4ce2849a6b69119a2d34c4db}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Stand-level forest management prescriptions for federal forests in the interior northwest (USA) have changed emphasis in the past decade from being influenced by economic criteria to being influenced by ecological criteria. The design of forest management prescriptions that maintain stand density levels within a target range is now preferred over the design of prescriptions that maximize net present value. We describe a stand-level optimization process for developing efficient management regimes that uses dynamic programming and a region-limited search strategy. The process develops management regimes by penalizing deviations from a preferred range of stand density. Operational considerations, such as minimum harvest levels, can be important, and are considered as constraints in this modeling process. The timing of harvests is such that entries are only permitted when a minimum harvest can be obtained, when a minimum residual basal area can be maintained, and when harvests are limited to trees with a certain diameter range. Lists of residual, harvested, and dead tree records are available for each decade of the optimal regime. These records of information can facilitate further forest product or habitat suitability analysis associated with forest policy analyses.}
+      \field{issn}{03781127}
+      \field{journaltitle}{Forest Ecology and Management}
+      \field{langid}{english}
+      \field{month}{10}
+      \field{number}{2-3}
+      \field{title}{A Density-Dependent Stand-Level Optimization Approach for Deriving Management Prescriptions for Interior Northwest ({{USA}}) Landscapes}
+      \field{urlday}{18}
+      \field{urlmonth}{6}
+      \field{urlyear}{2025}
+      \field{volume}{217}
+      \field{year}{2005}
+      \field{urldateera}{ce}
+      \field{pages}{171\bibrangedash 186}
+      \range{pages}{16}
+      \verb{doi}
+      \verb 10.1016/j.foreco.2005.05.060
+      \endverb
+    \endentry
+    \entry{BettingerAndLi2009}{article}{}
+      \name{author}{2}{ul=2}{%
+        {{un=0,uniquepart=base,hash=eec615cf69862a45f7f45ec985704146}{%
+           family={Bettinger},
+           familyi={B\bibinitperiod},
+           given={Pete},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a52cf518f2c306f07a6975152ab453e9}{%
+           family={Li},
+           familyi={L\bibinitperiod},
+           given={Rongxia},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{ec4e735b3f486b8b622726116d6e1f06}
+      \strng{fullhash}{ec4e735b3f486b8b622726116d6e1f06}
+      \strng{bibnamehash}{ec4e735b3f486b8b622726116d6e1f06}
+      \strng{authorbibnamehash}{ec4e735b3f486b8b622726116d6e1f06}
+      \strng{authornamehash}{ec4e735b3f486b8b622726116d6e1f06}
+      \strng{authorfullhash}{ec4e735b3f486b8b622726116d6e1f06}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{When a landowner considers the management of an even-aged stand of trees, along with decisions related to intermediate silvicultural treatments, the rotation age decision is of importance. An even-aged rotation is the length of time between the establishment of a stand of trees and the clearcut or final harvest of the trees. A number of qualitative and quantitative methods can be used to arrive at the desired rotation age of an even-aged stand of trees. This chapter describes seven rotation age determination processes: the physical rotation age, the technical rotation age, the silvicultural rotation age, the maximum volume rotation age, the income generation rotation age, the economic rotation age, and the value growth rotation age. Each rotation age determination process may be valid for a given landowner and their objectives, therefore the processes are approached from a relatively objective point of view. Examples pertaining to a pine forest from the southern United States are presented to compare and contrast the rotation age determined using each process.}
+      \field{journaltitle}{Forest Management}
+      \field{langid}{english}
+      \field{title}{{{ROTATION AGE DETERMINATION FOR EVEN-AGED FOREST PLANTATIONS}}}
+      \field{year}{2009}
+    \endentry
+    \entry{buongiornoAdaptiveEconomicEcological2015}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=42dbc3e58a8c8a66891e4d70a2a078f3}{%
+           family={Buongiorno},
+           familyi={B\bibinitperiod},
+           given={Joseph},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=1354bd9b61187e73758324060bf07848}{%
+           family={Zhou},
+           familyi={Z\bibinitperiod},
+           given={Mo},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{e09c022d389281333fd54b181d1ff81d}
+      \strng{fullhash}{a3fb50dd289cd3d8958d7ec15fa2b13d}
+      \strng{bibnamehash}{a3fb50dd289cd3d8958d7ec15fa2b13d}
+      \strng{authorbibnamehash}{a3fb50dd289cd3d8958d7ec15fa2b13d}
+      \strng{authornamehash}{e09c022d389281333fd54b181d1ff81d}
+      \strng{authorfullhash}{a3fb50dd289cd3d8958d7ec15fa2b13d}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Background: Forest managers must deal with inherently stochastic ecological and economic processes. The future growth of trees is uncertain, and so is their value. The randomness of low-impact, high frequency or rare catastrophic shocks in forest growth has significant implications in shaping the mix of tree species and the forest landscape. In addition, the fluctuations of wood prices influence greatly forest revenues. Methods: Markov decision process models (MDPs) offer a rigorous and practical way of developing optimum management strategies, given these multiple sources of risk. Results: Examples illustrate how such management guidelines are obtained with MDPs for combined ecological and economic objectives, including diversity of tree species and size, landscape diversity, old growth preservation, and carbon sequestration. Conclusions: The findings illustrate the power of the MDP approach to deal with risk in forest resource management. They recognize that the future is best viewed in terms of probabilities. Given these probabilities, MDPs tie optimum adaptive actions strictly to the state of the forest and timber prices at decision time. The methods are theoretically rigorous, numerically efficient, and practical for field implementation.}
+      \field{issn}{2197-5620}
+      \field{journaltitle}{Forest Ecosystems}
+      \field{langid}{english}
+      \field{month}{12}
+      \field{number}{1}
+      \field{shortjournal}{For. Ecosyst.}
+      \field{title}{Adaptive Economic and Ecological Forest Management under Risk}
+      \field{urlday}{28}
+      \field{urlmonth}{1}
+      \field{urlyear}{2026}
+      \field{volume}{2}
+      \field{year}{2015}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{4}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1186/s40663-015-0030-y
+      \endverb
+      \verb{file}
+      \verb C:\Users\ChazMerritt\Zotero\storage\K5AFXTVL\Buongiorno and Zhou - 2015 - Adaptive economic and ecological forest management.pdf
+      \endverb
+      \verb{urlraw}
+      \verb http://www.forestecosyst.com/content/2/1/4
+      \endverb
+      \verb{url}
+      \verb http://www.forestecosyst.com/content/2/1/4
+      \endverb
+    \endentry
+    \entry{campbellHierarchicalSimulationthroughoptimizationApproach2007}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=ea2155ccb2ba756c0562a715cec657f4}{%
+           family={Campbell},
+           familyi={C\bibinitperiod},
+           given={K.A.},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e62d607fd782dea1eb685a0e194192b3}{%
+           family={Dewhurst},
+           familyi={D\bibinitperiod},
+           given={S.M.},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{9957c47e96e69b9454274eabfa4937e9}
+      \strng{fullhash}{0a3a6ae790579f717bace0e3ff8d5fa9}
+      \strng{bibnamehash}{0a3a6ae790579f717bace0e3ff8d5fa9}
+      \strng{authorbibnamehash}{0a3a6ae790579f717bace0e3ff8d5fa9}
+      \strng{authornamehash}{9957c47e96e69b9454274eabfa4937e9}
+      \strng{authorfullhash}{0a3a6ae790579f717bace0e3ff8d5fa9}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{We describe a stochastic–heuristic forest management model which has been adapted from a timber harvest scheduling model, to model natural disturbances based on the concept of Markov chain probabilities. Using a simulation-through-optimization approach allowed us the advantage of modelling complex disturbance problems while at the same time overcoming the extensive processing times that can be associated with conventional simulation techniques. We implemented the model for a 1.2 million ha study area in the central interior of British Columbia, parameterizing the model with historical wildfire probabilities calculated from historical spatial data. A sensitivity analysis of model parameters was carried out to evaluate the performance of disturbance model. In addition, the effects of scale on disturbance simulation were explored by modelling disturbance processes at the forest, habitat, and stand scale. The disturbance model was found to be relatively robust to changes in disturbance probabilities, but was affected by the initial landscape condition. We were able to validate the disturbance model against the results of other published papers, which indicated our model produces similar results for disturbances in the sub-boreal as other models of disturbances in the boreal forest. Using the simulation-through-optimization approach, the efficiencies inherent in heuristic optimization techniques can be used to simulate the effects of natural disturbance processes and management policies.}
+      \field{issn}{03043800}
+      \field{journaltitle}{Ecological Modelling}
+      \field{langid}{english}
+      \field{month}{4}
+      \field{number}{3-4}
+      \field{shortjournal}{Ecological Modelling}
+      \field{title}{A Hierarchical Simulation-through-Optimization Approach to Forest Disturbance Modelling}
+      \field{urlday}{18}
+      \field{urlmonth}{6}
+      \field{urlyear}{2025}
+      \field{volume}{202}
+      \field{year}{2007}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{281\bibrangedash 296}
+      \range{pages}{16}
+      \verb{doi}
+      \verb 10.1016/j.ecolmodel.2006.10.020
+      \endverb
+      \verb{urlraw}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S0304380006005345
+      \endverb
+      \verb{url}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S0304380006005345
+      \endverb
+    \endentry
+    \entry{forsellGraphbasedMarkovDecision2007}{article}{}
+      \name{author}{6}{}{%
+        {{un=0,uniquepart=base,hash=b4b5d7be3aae901f12ec7ea26a6dee61}{%
+           family={Forsell},
+           familyi={F\bibinitperiod},
+           given={N},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2d1ddcedf15566a9dd639e530d0534d0}{%
+           family={Wikstrom},
+           familyi={W\bibinitperiod},
+           given={P},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3a0df15007c459adbf2d4fca56e97cb5}{%
+           family={Garcia},
+           familyi={G\bibinitperiod},
+           given={F},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=602234378161c1458acecec9b715968f}{%
+           family={Sabbadin},
+           familyi={S\bibinitperiod},
+           given={R},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7e8e5c4a5ec3a0b427860fe279074012}{%
+           family={Blennow},
+           familyi={B\bibinitperiod},
+           given={K},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8dbb41335ce9a17ba254345d779b7994}{%
+           family={Eriksson},
+           familyi={E\bibinitperiod},
+           given={L\bibnamedelima O},
+           giveni={L\bibinitperiod\bibinitdelim O\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{08095b838ecc21ed4b0c9926e9ba3e10}
+      \strng{fullhash}{f5937d1c878b2c5a490c5fce21b84e8f}
+      \strng{bibnamehash}{f5937d1c878b2c5a490c5fce21b84e8f}
+      \strng{authorbibnamehash}{f5937d1c878b2c5a490c5fce21b84e8f}
+      \strng{authornamehash}{08095b838ecc21ed4b0c9926e9ba3e10}
+      \strng{authorfullhash}{f5937d1c878b2c5a490c5fce21b84e8f}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Annals of Operations Research}
+      \field{langid}{english}
+      \field{title}{A Graph-based Markov Decision Process Approach for Managing Forests under Risk of Wind Damage}
+      \field{year}{2007}
+    \endentry
+    \entry{fortinStochasticDeterministicSingletree2012}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=e6d424861aa7971453fc3e25193ed899}{%
+           family={Fortin},
+           familyi={F\bibinitperiod},
+           given={Mathieu},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=c9f45128871aaefabd1b4d565e69b9c7}{%
+           family={Langevin},
+           familyi={L\bibinitperiod},
+           given={Luc},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{2869fe9758d4b20c2bc9fc6e6bfd204e}
+      \strng{fullhash}{fabad871c192ad0e622b1dfbbd240c75}
+      \strng{bibnamehash}{fabad871c192ad0e622b1dfbbd240c75}
+      \strng{authorbibnamehash}{fabad871c192ad0e622b1dfbbd240c75}
+      \strng{authornamehash}{2869fe9758d4b20c2bc9fc6e6bfd204e}
+      \strng{authorfullhash}{fabad871c192ad0e622b1dfbbd240c75}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{shorttitle}
+      \field{abstract}{Introduction Deterministic single-tree models are commonly used in forestry. However, there is evidence that stochastic events may interact with the nonlinear mechanisms that underlie forest growth. As a consequence, stochastic and deterministic simulations could yield different results for the same single-tree model and the same initial conditions. This hypothesis was tested in this study. \& Material and methods We used a single-tree growth model that can be implemented either stochastically or deterministically. Two data sets of 186 and 342 plots each were used for the comparisons. For each plot, the simulations were run on a 100-year period using 10-year growth steps. Three different response variables were compared.}
+      \field{issn}{1286-4560, 1297-966X}
+      \field{journaltitle}{Annals of Forest Science}
+      \field{langid}{english}
+      \field{month}{3}
+      \field{number}{2}
+      \field{shortjournal}{Annals of Forest Science}
+      \field{shorttitle}{Stochastic or Deterministic Single-Tree Models}
+      \field{title}{Stochastic or Deterministic Single-Tree Models: Is There Any Difference in Growth Predictions?}
+      \field{urlday}{18}
+      \field{urlmonth}{6}
+      \field{urlyear}{2025}
+      \field{volume}{69}
+      \field{year}{2012}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{271\bibrangedash 282}
+      \range{pages}{12}
+      \verb{doi}
+      \verb 10.1007/s13595-011-0112-0
+      \endverb
+      \verb{urlraw}
+      \verb https://annforsci.biomedcentral.com/articles/10.1007/s13595-011-0112-0
+      \endverb
+      \verb{url}
+      \verb https://annforsci.biomedcentral.com/articles/10.1007/s13595-011-0112-0
+      \endverb
+    \endentry
+    \entry{helene_damage_assessment}{misc}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8a1fbd589514c9467f4d54ea9b7811e8}{%
+           family={{Georgia Forestry Commission}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{8a1fbd589514c9467f4d54ea9b7811e8}
+      \strng{fullhash}{8a1fbd589514c9467f4d54ea9b7811e8}
+      \strng{bibnamehash}{8a1fbd589514c9467f4d54ea9b7811e8}
+      \strng{authorbibnamehash}{8a1fbd589514c9467f4d54ea9b7811e8}
+      \strng{authornamehash}{8a1fbd589514c9467f4d54ea9b7811e8}
+      \strng{authorfullhash}{8a1fbd589514c9467f4d54ea9b7811e8}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Hurricane Helene Timber Damage Assessment}
+      \field{urlday}{8}
+      \field{urlmonth}{9}
+      \field{urlyear}{2025}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://gatrees.org/wp-content/uploads/2024/11/Hurricane-Helene-Timber-Impact-Assessment-Georgia-2024.pdf
+      \endverb
+      \verb{url}
+      \verb https://gatrees.org/wp-content/uploads/2024/11/Hurricane-Helene-Timber-Impact-Assessment-Georgia-2024.pdf
+      \endverb
+    \endentry
+    \entry{pmrcHarrisonYieldPredictionGrowth1996}{report}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=cbce5464cad0d9397c685614907528ae}{%
+           family={Harrison},
+           familyi={H\bibinitperiod},
+           given={W.\bibnamedelimi M.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3472b8f3024feaf23b76ae9252b555d4}{%
+           family={Borders},
+           familyi={B\bibinitperiod},
+           given={Bruce\bibnamedelima E.},
+           giveni={B\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {Plantation Management Research Cooperative, Daniel B. Warnell School of Forest Resources, University of Georgia}%
+      }
+      \list{location}{1}{%
+        {Athens, Georgia}%
+      }
+      \strng{namehash}{7c72ba75f03ab14650b34764b33cb564}
+      \strng{fullhash}{6225f2de10f3846ccd6e51b4b88ca8e4}
+      \strng{bibnamehash}{6225f2de10f3846ccd6e51b4b88ca8e4}
+      \strng{authorbibnamehash}{6225f2de10f3846ccd6e51b4b88ca8e4}
+      \strng{authornamehash}{7c72ba75f03ab14650b34764b33cb564}
+      \strng{authorfullhash}{6225f2de10f3846ccd6e51b4b88ca8e4}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{langid}{english}
+      \field{month}{2}
+      \field{number}{PMRC Technical Report 1996-1}
+      \field{title}{Yield Prediction and Growth Projection for Site-Prepared Loblolly Pine Plantations in the Carolinas, Georgia, Alabama and Florida}
+      \field{type}{techreport}
+      \field{year}{1996}
+    \endentry
+    \entry{jiTimberHarvestPlanning2024}{article}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=2d0d3f044674e8e1009a047fbc763371}{%
+           family={Ji},
+           familyi={J\bibinitperiod},
+           given={Hyo-Vin},
+           giveni={H\bibinithyphendelim V\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=97e61f3f1c29c91647fc5356bb56556d}{%
+           family={Han},
+           familyi={H\bibinitperiod},
+           given={Sang-Kyun},
+           giveni={S\bibinithyphendelim K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a3b8a6a35d2bcae3986cd51c452330b8}{%
+           family={Park},
+           familyi={P\bibinitperiod},
+           given={Jin-Woo},
+           giveni={J\bibinithyphendelim W\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {Multidisciplinary Digital Publishing Institute}%
+      }
+      \strng{namehash}{22785b423a126d6d0580e0766c1a73dc}
+      \strng{fullhash}{8bbe498645cf89c0863fc8f0adc9c1d9}
+      \strng{bibnamehash}{8bbe498645cf89c0863fc8f0adc9c1d9}
+      \strng{authorbibnamehash}{8bbe498645cf89c0863fc8f0adc9c1d9}
+      \strng{authornamehash}{22785b423a126d6d0580e0766c1a73dc}
+      \strng{authorfullhash}{8bbe498645cf89c0863fc8f0adc9c1d9}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{shorttitle}
+      \field{abstract}{This study developed a forest management plan model using reinforcement learning (Q-learning) to optimize both the economic and ecological functions of forests. Management objectives for national forests were established, and forest conditions were analyzed using GIS spatial data and administrative records. A 60-year forest management plan was formulated to predict timber production and management performance across different regions and time periods. Our analysis revealed that Scenario 3 (Carbon Storage Priority) demonstrated the highest economic value, starting at approximately KRW 576.2 billion in the initial period and escalating to KRW 775.7 billion over six 10-year periods, totaling 60 years. In addition to its economic performance, Scenario 3 effectively improved forest age class structure and ensured a stable timber supply, making it the most balanced approach for sustainable forest management. By focusing on carbon storage as a key management goal, this approach highlights the potential for achieving both economic and environmental benefits concurrently. These results suggest that reinforcement learning is a powerful tool for developing long-term forest management strategies that address multiple objectives, including economic viability, ecological sustainability, and resource optimization.}
+      \field{issn}{1999-4907}
+      \field{journaltitle}{Forests}
+      \field{langid}{english}
+      \field{month}{10}
+      \field{number}{10}
+      \field{shorttitle}{Timber Harvest Planning Using Reinforcement Learning}
+      \field{title}{Timber Harvest Planning Using Reinforcement Learning: A Feasibility Study}
+      \field{urlday}{11}
+      \field{urlmonth}{11}
+      \field{urlyear}{2024}
+      \field{volume}{15}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \field{pages}{1725}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.3390/f15101725
+      \endverb
+      \keyw{carbon storage,Forestry,Harvest Scheduling,Optimization,Q-learning algorithm,Reinforcement Learning,timber production,water source recharge}
+    \endentry
+    \entry{johnstonManagingForestsCarbon2017}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=889727dd2c7754c9d97e529d74f3b4cb}{%
+           family={Johnston},
+           familyi={J\bibinitperiod},
+           given={Craig\bibnamedelima M.T.},
+           giveni={C\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3d9aa7d104bd42254d92edfe226eead0}{%
+           family={Withey},
+           familyi={W\bibinitperiod},
+           given={Patrick},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{5e8a2e2447a5267bd96419714487e00a}
+      \strng{fullhash}{d7a2bc75590071fecd80bec052e496b1}
+      \strng{bibnamehash}{d7a2bc75590071fecd80bec052e496b1}
+      \strng{authorbibnamehash}{d7a2bc75590071fecd80bec052e496b1}
+      \strng{authornamehash}{5e8a2e2447a5267bd96419714487e00a}
+      \strng{authorfullhash}{d7a2bc75590071fecd80bec052e496b1}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{shorttitle}
+      \field{abstract}{This paper calculates steady state management decisions that, if followed indefinitely, provide an adaptive strategy that maximizes the value from timber and carbon sequestration when risk is present. By including carbon offsets directly in the objective function of a Markov decision process (MDP) model, we find long-term tradeoffs exist between economic and ecological outcomes. An economic supply schedule is provided, which shows an exponential increase in the cost of sequestration. Moderate carbon prices effectively sequester additional CO2 from the atmosphere while having a positive impact on ecological indicators such as size and species diversity. In contrast, high carbon prices promote more of a monoculture in order to maximize expected forest value in the long run from carbon sequestration. This study finds evidence that the optimal adaptive decisions are sensitive to the magnitude of carbon prices, and consequently, so too are ecological outcomes. While some governments acknowledge the influence carbon markets have on the ecological integrity of the forest, fluctuations in carbon prices within a cap-and-trade market likely influence the optimal decision making of the forest manager, and thus, the ecological landscape of the forest itself.}
+      \field{issn}{09218009}
+      \field{journaltitle}{Ecological Economics}
+      \field{langid}{english}
+      \field{month}{8}
+      \field{shortjournal}{Ecological Economics}
+      \field{shorttitle}{Managing {{Forests}} for {{Carbon}} and {{Timber}}}
+      \field{title}{Managing {{Forests}} for {{Carbon}} and {{Timber}}: {{A Markov Decision Model}} of {{Uneven-aged Forest Management With Risk}}}
+      \field{urlday}{18}
+      \field{urlmonth}{6}
+      \field{urlyear}{2025}
+      \field{volume}{138}
+      \field{year}{2017}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{31\bibrangedash 39}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.1016/j.ecolecon.2017.03.023
+      \endverb
+      \verb{urlraw}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S0921800916307492
+      \endverb
+      \verb{url}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S0921800916307492
+      \endverb
+    \endentry
+    \entry{costsMaggardNatzke}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=b4de252c58e78a275a71b90e08859709}{%
+           family={Maggard},
+           familyi={M\bibinitperiod},
+           given={A.},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=42540e87b57855cbf58b271015db8563}{%
+           family={Natzke},
+           familyi={N\bibinitperiod},
+           given={J.},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{d539d331a48cd103e5d22f3dc8eccf52}
+      \strng{fullhash}{9334b4bc1b8b1472b380168547d2e7a8}
+      \strng{bibnamehash}{9334b4bc1b8b1472b380168547d2e7a8}
+      \strng{authorbibnamehash}{9334b4bc1b8b1472b380168547d2e7a8}
+      \strng{authornamehash}{d539d331a48cd103e5d22f3dc8eccf52}
+      \strng{authorfullhash}{9334b4bc1b8b1472b380168547d2e7a8}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Forest Landowner}
+      \field{title}{Costs and trends of southern forestry practices}
+      \field{year}{2022}
+    \endentry
+    \entry{maloReinforcementLearningOptimizing2021}{article}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=8bafe15c788d2e611aec6337d49a3385}{%
+           family={Malo},
+           familyi={M\bibinitperiod},
+           given={Pekka},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=748df402e476fec83d202c1bc3985fcf}{%
+           family={Tahvonen},
+           familyi={T\bibinitperiod},
+           given={Olli},
+           giveni={O\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a90e21e54345e1005aa65ea494522704}{%
+           family={Suominen},
+           familyi={S\bibinitperiod},
+           given={Antti},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b5182b0d783c32cf4e0415d19cd68335}{%
+           family={Back},
+           familyi={B\bibinitperiod},
+           given={Philipp},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d856cbfd083e7eb354599086a163916d}{%
+           family={Viitasaari},
+           familyi={V\bibinitperiod},
+           given={Lauri},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {NRC Research Press}%
+      }
+      \strng{namehash}{6c39ad48cb418dfaa07a1ad5d261c926}
+      \strng{fullhash}{d890dc8800ac364603f3da5a375a62b1}
+      \strng{bibnamehash}{d890dc8800ac364603f3da5a375a62b1}
+      \strng{authorbibnamehash}{d890dc8800ac364603f3da5a375a62b1}
+      \strng{authornamehash}{6c39ad48cb418dfaa07a1ad5d261c926}
+      \strng{authorfullhash}{d890dc8800ac364603f3da5a375a62b1}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{We solve a stochastic high-dimensional optimal harvesting problem by using reinforcement learning algorithms developed for agents who learn an optimal policy in a sequential decision process through repeated experience. This approach produces optimal solutions without discretization of state and control variables. Our stand-level model includes mixed species, tree size structure, optimal harvest timing, choice between rotation and continuous cover forestry, stochasticity in stand growth, and stochasticity in the occurrence of natural disasters. The optimal solution or policy maps the system state to the set of actions, i.e., clear-cutting, thinning, or no harvest decisions as well as the intensity of thinning over tree species and size classes. The algorithm repeats the solutions for deterministic problems computed earlier with time-consuming methods. Optimal policy describes harvesting choices from any initial state and reveals how the initial thinning versus clear-cutting choice depends on the economic and ecological factors. Stochasticity in stand growth increases the diversity of species composition. Despite the high variability in natural regeneration, the optimal policy closely satisfies the certainty equivalence principle. The effect of natural disasters is similar to an increase in the interest rate, but in contrast to earlier results, this tends to change the management regime from rotation forestry to continuous cover management.}
+      \field{issn}{0045-5067}
+      \field{journaltitle}{Canadian Journal of Forest Research}
+      \field{month}{10}
+      \field{number}{10}
+      \field{title}{Reinforcement Learning in Optimizing Forest Management}
+      \field{urlday}{11}
+      \field{urlmonth}{11}
+      \field{urlyear}{2024}
+      \field{volume}{51}
+      \field{year}{2021}
+      \field{urldateera}{ce}
+      \field{pages}{1393\bibrangedash 1409}
+      \range{pages}{17}
+      \verb{doi}
+      \verb 10.1139/cjfr-2020-0447
+      \endverb
+    \endentry
+    \entry{markowitzUtilityWealth1952}{article}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=bdfa1c8585b5a4ae901315043a00f2f2}{%
+           family={Markowitz},
+           familyi={M\bibinitperiod},
+           given={Harry},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{fullhash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{bibnamehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{authorbibnamehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{authornamehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{authorfullhash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{(b) acts in the face of known odds so as to maximize expected utility. (2) The utility function is as illustrated in Figure i. We may assume it to be a continuous curve with at least first and second derivatives.5 Let U be utility and W be wealth. Below some point A, (a2U)/(0W2) {$<$} o; between A and B, (02U)/Q(W2) {$>$} o; above B, (02U)/(0W2) {$<$} a. To tell geometrically whether or not an individual would prefer Wo with certainty or a "fair"6 chance of rising to WI or falling to}
+      \field{issn}{0022-3808, 1537-534X}
+      \field{journaltitle}{Journal of Political Economy}
+      \field{langid}{english}
+      \field{month}{4}
+      \field{number}{2}
+      \field{shortjournal}{Journal of Political Economy}
+      \field{title}{The {{Utility}} of {{Wealth}}}
+      \field{urlday}{25}
+      \field{urlmonth}{8}
+      \field{urlyear}{2025}
+      \field{volume}{60}
+      \field{year}{1952}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{151\bibrangedash 158}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1086/257177
+      \endverb
+      \verb{urlraw}
+      \verb https://www.journals.uchicago.edu/doi/10.1086/257177
+      \endverb
+      \verb{url}
+      \verb https://www.journals.uchicago.edu/doi/10.1086/257177
+      \endverb
+    \endentry
+    \entry{messierDealingNonlinearityUncertainty2016}{article}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=2e4153d9f7c9f61ff2d34a1ea2ea2297}{%
+           family={Messier},
+           familyi={M\bibinitperiod},
+           given={Christian},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6c90eb5e00e2f2e2a63dcf5b7ac40c3a}{%
+           family={Puettmann},
+           familyi={P\bibinitperiod},
+           given={Klaus},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a392c9710ad605e875ec406b95508ec7}{%
+           family={Filotas},
+           familyi={F\bibinitperiod},
+           given={Elise},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=acc105978602208d71743a3bd2010a64}{%
+           family={Coates},
+           familyi={C\bibinitperiod},
+           given={Dave},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{a029af0ab6335511fe102cbf56a6d9a1}
+      \strng{fullhash}{3184a53794f077663d473209bbc3044f}
+      \strng{bibnamehash}{3184a53794f077663d473209bbc3044f}
+      \strng{authorbibnamehash}{3184a53794f077663d473209bbc3044f}
+      \strng{authornamehash}{a029af0ab6335511fe102cbf56a6d9a1}
+      \strng{authorfullhash}{3184a53794f077663d473209bbc3044f}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{2198-6436}
+      \field{journaltitle}{Current Forestry Reports}
+      \field{langid}{english}
+      \field{month}{6}
+      \field{number}{2}
+      \field{shortjournal}{Curr Forestry Rep}
+      \field{title}{Dealing with {{Non-linearity}} and {{Uncertainty}} in {{Forest Management}}}
+      \field{urlday}{18}
+      \field{urlmonth}{6}
+      \field{urlyear}{2025}
+      \field{volume}{2}
+      \field{year}{2016}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{150\bibrangedash 161}
+      \range{pages}{12}
+      \verb{doi}
+      \verb 10.1007/s40725-016-0036-x
+      \endverb
+      \verb{urlraw}
+      \verb http://link.springer.com/10.1007/s40725-016-0036-x
+      \endverb
+      \verb{url}
+      \verb http://link.springer.com/10.1007/s40725-016-0036-x
+      \endverb
+    \endentry
+    \entry{netoMultiobjectiveMonteCarlo2020}{article}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=de774381f9f24ace23b8feb5486ca8d2}{%
+           family={Neto},
+           familyi={N\bibinitperiod},
+           given={Teresa},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f7ab2dbe6593b1265fca679460d47eb4}{%
+           family={Constantino},
+           familyi={C\bibinitperiod},
+           given={Miguel},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cb42fde4e9c029e31fabaa16ebe36a1c}{%
+           family={Martins},
+           familyi={M\bibinitperiod},
+           given={Isabel},
+           giveni={I\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=326abe03fe193b2b37127453ad4f1cb3}{%
+           family={Pedroso},
+           familyi={P\bibinitperiod},
+           given={João\bibnamedelima Pedro},
+           giveni={J\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{cb9e7f41dbf6fff970a097623b7da3ab}
+      \strng{fullhash}{36a81eed8f17125f7db3ba7d781a8ad7}
+      \strng{bibnamehash}{36a81eed8f17125f7db3ba7d781a8ad7}
+      \strng{authorbibnamehash}{36a81eed8f17125f7db3ba7d781a8ad7}
+      \strng{authornamehash}{cb9e7f41dbf6fff970a097623b7da3ab}
+      \strng{authorfullhash}{36a81eed8f17125f7db3ba7d781a8ad7}
+      \field{sortinit}{N}
+      \field{sortinithash}{22369a73d5f88983a108b63f07f37084}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{03772217}
+      \field{journaltitle}{European Journal of Operational Research}
+      \field{langid}{english}
+      \field{month}{5}
+      \field{number}{3}
+      \field{shortjournal}{European Journal of Operational Research}
+      \field{title}{A Multi-Objective {{Monte Carlo}} Tree Search for Forest Harvest Scheduling}
+      \field{urlday}{18}
+      \field{urlmonth}{6}
+      \field{urlyear}{2025}
+      \field{volume}{282}
+      \field{year}{2020}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{1115\bibrangedash 1126}
+      \range{pages}{12}
+      \verb{doi}
+      \verb 10.1016/j.ejor.2019.09.034
+      \endverb
+      \verb{urlraw}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S037722171930791X
+      \endverb
+      \verb{url}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S037722171930791X
+      \endverb
+    \endentry
+    \entry{stable-baselines3}{article}{}
+      \name{author}{6}{}{%
+        {{un=0,uniquepart=base,hash=646dfae388f2fca3d68ff9214acd722c}{%
+           family={Raffin},
+           familyi={R\bibinitperiod},
+           given={Antonin},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=165a914db6ae4e223ac87e4baef87090}{%
+           family={Hill},
+           familyi={H\bibinitperiod},
+           given={Ashley},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f443af3aea10cb9b968ba9d4c0dcbd0d}{%
+           family={Gleave},
+           familyi={G\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2c6bdcb44a478971ad9b3b007535f034}{%
+           family={Kanervisto},
+           familyi={K\bibinitperiod},
+           given={Anssi},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b76527a76a4bb1c475b635a35021d0ef}{%
+           family={Ernestus},
+           familyi={E\bibinitperiod},
+           given={Maximilian},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cfc1b2bcb8937cfd9453ed45243e18f2}{%
+           family={Dormann},
+           familyi={D\bibinitperiod},
+           given={Noah},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{5044a4768c7fc20f25fb680bb11f4aaf}
+      \strng{fullhash}{e3c43789f8de334374c8e95d9d514552}
+      \strng{bibnamehash}{e3c43789f8de334374c8e95d9d514552}
+      \strng{authorbibnamehash}{e3c43789f8de334374c8e95d9d514552}
+      \strng{authornamehash}{5044a4768c7fc20f25fb680bb11f4aaf}
+      \strng{authorfullhash}{e3c43789f8de334374c8e95d9d514552}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Machine Learning Research}
+      \field{number}{268}
+      \field{title}{Stable-Baselines3: Reliable Reinforcement Learning Implementations}
+      \field{volume}{22}
+      \field{year}{2021}
+      \field{pages}{1\bibrangedash 8}
+      \range{pages}{8}
+      \verb{urlraw}
+      \verb http://jmlr.org/papers/v22/20-1364.html
+      \endverb
+      \verb{url}
+      \verb http://jmlr.org/papers/v22/20-1364.html
+      \endverb
+    \endentry
+    \entry{rockafellarOptimizationConditionalValueatrisk2000}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=18de24308c36b3348b1477a2f7aa442f}{%
+           family={Rockafellar},
+           familyi={R\bibinitperiod},
+           given={R.\bibnamedelimi Tyrrell},
+           giveni={R\bibinitperiod\bibinitdelim T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=75a8a2346ba45ae5110aa302b89a30c7}{%
+           family={Uryasev},
+           familyi={U\bibinitperiod},
+           given={Stanislav},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{ea36ccbfd1e063bff7572764140ac23e}
+      \strng{fullhash}{d7d7df1ff728c2fe07554ddd8bb41c56}
+      \strng{bibnamehash}{d7d7df1ff728c2fe07554ddd8bb41c56}
+      \strng{authorbibnamehash}{d7d7df1ff728c2fe07554ddd8bb41c56}
+      \strng{authornamehash}{ea36ccbfd1e063bff7572764140ac23e}
+      \strng{authorfullhash}{d7d7df1ff728c2fe07554ddd8bb41c56}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{14651211}
+      \field{journaltitle}{The Journal of Risk}
+      \field{langid}{english}
+      \field{number}{3}
+      \field{title}{Optimization of Conditional Value-at-Risk}
+      \field{urlday}{8}
+      \field{urlmonth}{9}
+      \field{urlyear}{2025}
+      \field{volume}{2}
+      \field{year}{2000}
+      \field{urldateera}{ce}
+      \field{pages}{21\bibrangedash 41}
+      \range{pages}{21}
+      \verb{doi}
+      \verb 10.21314/JOR.2000.038
+      \endverb
+    \endentry
+    \entry{stevensOptimalHarvestRates1986}{thesis}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=bff83fc5c974bafed3617aec0cf210d2}{%
+           family={Stevens},
+           familyi={S\bibinitperiod},
+           given={Neil},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {University of Alberta}%
+      }
+      \list{location}{1}{%
+        {Edmonton, Alberta}%
+      }
+      \strng{namehash}{bff83fc5c974bafed3617aec0cf210d2}
+      \strng{fullhash}{bff83fc5c974bafed3617aec0cf210d2}
+      \strng{bibnamehash}{bff83fc5c974bafed3617aec0cf210d2}
+      \strng{authorbibnamehash}{bff83fc5c974bafed3617aec0cf210d2}
+      \strng{authornamehash}{bff83fc5c974bafed3617aec0cf210d2}
+      \strng{authorfullhash}{bff83fc5c974bafed3617aec0cf210d2}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{Harvest rates for a forest subject to risk of destruction by fire have previously been estimated through the use of models which simultaneously plan for several decades or more. But the plans are not used for the length of time on which optimality was based. Plans are updated at relatively short periodic intervals, making the use of such models questionable. A computer model using this type of traditional even-flow planning was developed to illustrate its limited use in assessing the effect of fire on harvest levels. A different model was developed to represent the sequential decision-making process of timber management, using a technique called dynamic programming. Probabilistic destruction by fire was assumed. Optimal harvest rates maximized a function which was the sum of the total expected harvest plus the expected fluctuation in harvest level. In general, it was necessary to relinquish very large amounts of harvest to appreciably reduce fluctuations in harvest. Explanations for this consequence are given. Long-term harvest rates for a forest subject to fire were found to be reduced substantially. However, the policy of reducing current harvest rates to decrease future fluctuations was considered to be of limited value. It is recommended that current allowable cuts not be reduced for fire risk, unless warranted by an evaluation of the importance of fluctuations in harvest.}
+      \field{day}{9}
+      \field{month}{10}
+      \field{title}{Optimal {{Harvest Rates Considering}} the {{Risk}} of {{Forest Fire}}}
+      \field{type}{Thesis}
+      \field{year}{1986}
+      \field{dateera}{ce}
+    \endentry
+    \entry{suttonReinforcementLearningIntroduction2020}{book}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=eb920e5277d3d5fd0903f3cd41e11871}{%
+           family={Sutton},
+           familyi={S\bibinitperiod},
+           given={Richard\bibnamedelima S.},
+           giveni={R\bibinitperiod\bibinitdelim S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=63f88d8d8cc347f8cc505512c809e269}{%
+           family={Barto},
+           familyi={B\bibinitperiod},
+           given={Andrew},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Cambridge, Massachusetts London, England}%
+      }
+      \list{publisher}{1}{%
+        {The MIT Press}%
+      }
+      \strng{namehash}{176c86aa36fab51e81d033c2d8ea8cbe}
+      \strng{fullhash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \strng{bibnamehash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \strng{authorbibnamehash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \strng{authornamehash}{176c86aa36fab51e81d033c2d8ea8cbe}
+      \strng{authorfullhash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{shorttitle}
+      \field{abstract}{"Reinforcement learning, one of the most active research areas in artificial intelligence, is a computational approach to learning whereby an agent tries to maximize the total amount of reward it receives while interacting with a complex, uncertain environment. In Reinforcement Learning, Richard Sutton and Andrew Barto provide a clear and simple account of the field's key ideas and algorithms."--}
+      \field{edition}{Second edition}
+      \field{isbn}{978-0-262-03924-6}
+      \field{langid}{english}
+      \field{series}{Adaptive Computation and Machine Learning}
+      \field{shorttitle}{Reinforcement Learning}
+      \field{title}{Reinforcement Learning: An Introduction}
+      \field{year}{2020}
+    \endentry
+    \entry{tahvonenOptimizingHighdimensionalStochastic2022}{article}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=748df402e476fec83d202c1bc3985fcf}{%
+           family={Tahvonen},
+           familyi={T\bibinitperiod},
+           given={Olli},
+           giveni={O\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a90e21e54345e1005aa65ea494522704}{%
+           family={Suominen},
+           familyi={S\bibinitperiod},
+           given={Antti},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8bafe15c788d2e611aec6337d49a3385}{%
+           family={Malo},
+           familyi={M\bibinitperiod},
+           given={Pekka},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d856cbfd083e7eb354599086a163916d}{%
+           family={Viitasaari},
+           familyi={V\bibinitperiod},
+           given={Lauri},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2cc335efc8d024596bf78757cb73c2a0}{%
+           family={Parkatti},
+           familyi={P\bibinitperiod},
+           given={Vesa-Pekka},
+           giveni={V\bibinithyphendelim P\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{33e2da6957e951c1ba610c0be6f7e05f}
+      \strng{fullhash}{d7cc78039dec48d36944831cd389676c}
+      \strng{bibnamehash}{d7cc78039dec48d36944831cd389676c}
+      \strng{authorbibnamehash}{d7cc78039dec48d36944831cd389676c}
+      \strng{authornamehash}{33e2da6957e951c1ba610c0be6f7e05f}
+      \strng{authorfullhash}{d7cc78039dec48d36944831cd389676c}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{01651889}
+      \field{journaltitle}{Journal of Economic Dynamics and Control}
+      \field{langid}{english}
+      \field{month}{12}
+      \field{shortjournal}{Journal of Economic Dynamics and Control}
+      \field{title}{Optimizing High-Dimensional Stochastic Forestry via Reinforcement Learning}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2025}
+      \field{volume}{145}
+      \field{year}{2022}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{104553}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.jedc.2022.104553
+      \endverb
+      \verb{urlraw}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S0165188922002561
+      \endverb
+      \verb{url}
+      \verb https://linkinghub.elsevier.com/retrieve/pii/S0165188922002561
+      \endverb
+    \endentry
+    \entry{towers2024gymnasiumstandardinterfacereinforcement}{misc}{}
+      \name{author}{16}{}{%
+        {{un=0,uniquepart=base,hash=56b97afcbff5cf17ceacacabc82810be}{%
+           family={Towers},
+           familyi={T\bibinitperiod},
+           given={Mark},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=569412fb01366fe42149e701ea315457}{%
+           family={Kwiatkowski},
+           familyi={K\bibinitperiod},
+           given={Ariel},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=37dd89fdfe9c385b46db432c71ed88b1}{%
+           family={Terry},
+           familyi={T\bibinitperiod},
+           given={Jordan},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=c21e2d5541f60fd8fd0e8f65701d472c}{%
+           family={Balis},
+           familyi={B\bibinitperiod},
+           given={John\bibnamedelima U.},
+           giveni={J\bibinitperiod\bibinitdelim U\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a6d4dfeaaa2a42d859eb847f047c92c6}{%
+           family={Cola},
+           familyi={C\bibinitperiod},
+           given={Gianluca\bibnamedelima De},
+           giveni={G\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8a006dd742c8f7a1e71c8d5b862abaec}{%
+           family={Deleu},
+           familyi={D\bibinitperiod},
+           given={Tristan},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ed70b46c42501b146d70523e5935e1bd}{%
+           family={Goulão},
+           familyi={G\bibinitperiod},
+           given={Manuel},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ba41f75ecc77ba0b7dbae4c0927cfe77}{%
+           family={Kallinteris},
+           familyi={K\bibinitperiod},
+           given={Andreas},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=19c1c1591bd4f9c93bb0bd7a388890b2}{%
+           family={Krimmel},
+           familyi={K\bibinitperiod},
+           given={Markus},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b0066d33e0e2e5d916c42b4eb9342a19}{%
+           family={KG},
+           familyi={K\bibinitperiod},
+           given={Arjun},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7924a9a0a06c93726bed7eed45a19aa3}{%
+           family={Perez-Vicente},
+           familyi={P\bibinithyphendelim V\bibinitperiod},
+           given={Rodrigo},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=076e673542ae3086dd8a964e00192590}{%
+           family={Pierré},
+           familyi={P\bibinitperiod},
+           given={Andrea},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=572b48d10d1ca3e03df3bc08618dd048}{%
+           family={Schulhoff},
+           familyi={S\bibinitperiod},
+           given={Sander},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7b81c11069a312b5e61080419325809c}{%
+           family={Tai},
+           familyi={T\bibinitperiod},
+           given={Jun\bibnamedelima Jet},
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=0337c2df415d8e827c53f75b4e25b659}{%
+           family={Tan},
+           familyi={T\bibinitperiod},
+           given={Hannah},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9a6176749241c97e002f2882448b5668}{%
+           family={Younis},
+           familyi={Y\bibinitperiod},
+           given={Omar\bibnamedelima G.},
+           giveni={O\bibinitperiod\bibinitdelim G\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{671a5b29dade9bddb3ee8cb7bc0889d0}
+      \strng{fullhash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \strng{bibnamehash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \strng{authorbibnamehash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \strng{authornamehash}{671a5b29dade9bddb3ee8cb7bc0889d0}
+      \strng{authorfullhash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.LG}
+      \field{eprinttype}{arXiv}
+      \field{title}{Gymnasium: A Standard Interface for Reinforcement Learning Environments}
+      \field{year}{2024}
+      \verb{eprint}
+      \verb 2407.17032
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2407.17032
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2407.17032
+      \endverb
+    \endentry
+    \entry{weiskittelForestGrowthYield2011}{book}{}
+      \name{editor}{1}{}{%
+        {{un=0,uniquepart=base,hash=009c03d1d78f2063ddd580b2a37d2478}{%
+           family={Weiskittel},
+           familyi={W\bibinitperiod},
+           given={Aaron\bibnamedelima R.},
+           giveni={A\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Chichester}%
+      }
+      \list{publisher}{1}{%
+        {Wiley-Blackwell}%
+      }
+      \strng{namehash}{009c03d1d78f2063ddd580b2a37d2478}
+      \strng{fullhash}{009c03d1d78f2063ddd580b2a37d2478}
+      \strng{bibnamehash}{009c03d1d78f2063ddd580b2a37d2478}
+      \strng{editorbibnamehash}{009c03d1d78f2063ddd580b2a37d2478}
+      \strng{editornamehash}{009c03d1d78f2063ddd580b2a37d2478}
+      \strng{editorfullhash}{009c03d1d78f2063ddd580b2a37d2478}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{editor}
+      \field{labeltitlesource}{title}
+      \field{langid}{english}
+      \field{pagetotal}{1}
+      \field{title}{Forest Growth and Yield Modeling}
+      \field{year}{2011}
+      \field{dateera}{ce}
+      \verb{doi}
+      \verb 10.1002/9781119998518
+      \endverb
+    \endentry
+    \entry{woodsKernLongStudy}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=46d9eefc90160e359e4859dc1926fe1b}{%
+           family={Woods},
+           familyi={W\bibinitperiod},
+           given={Kerry\bibnamedelima D.},
+           giveni={K\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=801c4756c6d99e777bae7299d7bfbbac}{%
+           family={Kern},
+           familyi={K\bibinitperiod},
+           given={Christel\bibnamedelima C.},
+           giveni={C\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{cfae8fe32844b8ce5f0aa5dda904a479}
+      \strng{fullhash}{58eccb6da109292fa3f2b322f391fad0}
+      \strng{bibnamehash}{58eccb6da109292fa3f2b322f391fad0}
+      \strng{authorbibnamehash}{58eccb6da109292fa3f2b322f391fad0}
+      \strng{authornamehash}{cfae8fe32844b8ce5f0aa5dda904a479}
+      \strng{authorfullhash}{58eccb6da109292fa3f2b322f391fad0}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Ecosphere}
+      \field{title}{Intermediate disturbances drive long-term fluctuation in old-growth forest biomass: an 84-yr temperate forest record}
+      \field{year}{2022}
+    \endentry
+  \enddatalist
+  \missing{harrinsonYieldPredictionGrowth1996}
+\endrefsection
+\endinput
+

@@ -1,0 +1,19 @@
+[0] Config.pm:307> INFO - This is Biber 2.19
+[0] Config.pm:310> INFO - Logfile is 'thesis.blg'
+[40] biber:340> INFO - === Wed Feb  4, 2026, 09:49:58
+[47] Biber.pm:419> INFO - Reading 'thesis.bcf'
+[77] Biber.pm:979> INFO - Found 25 citekeys in bib section 0
+[83] Biber.pm:4419> INFO - Processing section 0
+[89] Biber.pm:4610> INFO - Looking for bibtex file 'references.bib' for section 0
+[91] bibtex.pm:1713> INFO - LaTeX decoding ...
+[118] bibtex.pm:1519> INFO - Found BibTeX data source 'references.bib'
+[226] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[226] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[226] Biber.pm:4239> INFO - Sorting list 'nyt/global//global/global' of type 'entry' with template 'nyt' and locale 'en-US'
+[226] Biber.pm:4245> INFO - No sort tailoring available for locale 'en-US'
+[244] bbl.pm:660> INFO - Writing 'thesis.bbl' with encoding 'UTF-8'
+[253] bbl.pm:763> INFO - Output to thesis.bbl
+[253] Biber.pm:131> WARN - BibTeX subsystem: /tmp/biber_tmp_8n4R/33e59b5ca9ec342068223d604c3f8d55_18327.utf8, line 129, warning: 11 characters of junk seen at toplevel
+[253] Biber.pm:131> WARN - BibTeX subsystem: /tmp/biber_tmp_8n4R/33e59b5ca9ec342068223d604c3f8d55_18327.utf8, line 150, warning: 31 characters of junk seen at toplevel
+[253] Biber.pm:131> WARN - I didn't find a database entry for 'harrinsonYieldPredictionGrowth1996' (section 0)
+[253] Biber.pm:133> INFO - WARNINGS: 3
