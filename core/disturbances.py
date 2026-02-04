@@ -29,36 +29,6 @@ def _bounded(val: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, val))
 
 
-def make_fire_event(*, start_age: float, severity: float, seed: int | None = None) -> DisturbanceEvent:
-    """Factory used by the gym env for stochastic fire events."""
-    sev = _bounded(severity if severity is not None else legacy_rng(seed), 0.0, 1.0)
-    # Fires mostly remove BA/TPA; moderate impact on height
-    return DisturbanceEvent(
-        start_age=float(start_age),
-        severity=sev,
-        category="fire",
-        ba_loss_fraction=sev * 0.8,
-        tpa_loss_fraction=sev * 0.6,
-        hd_loss_fraction=sev * 0.25,
-        disturbance_level="severe" if sev >= 0.7 else "moderate",
-    )
-
-
-def make_wind_event(*, start_age: float, severity: float, seed: int | None = None) -> DisturbanceEvent:
-    """Factory used by the gym env for stochastic wind events."""
-    sev = _bounded(severity if severity is not None else legacy_rng(seed), 0.0, 1.0)
-    # Wind throws fewer trees than fire but can still damage crowns
-    return DisturbanceEvent(
-        start_age=float(start_age),
-        severity=sev,
-        category="wind",
-        ba_loss_fraction=sev * 0.5,
-        tpa_loss_fraction=sev * 0.4,
-        hd_loss_fraction=sev * 0.15,
-        disturbance_level="severe" if sev >= 0.6 else "chronic",
-    )
-
-
 # ------------------------ disturbance generators --------------------------- #
 
 
@@ -124,9 +94,6 @@ class ChronicDisturbanceGenerator:
 
 
 __all__ = [
-    "DisturbanceEvent",
     "CatastrophicDisturbanceGenerator",
-    "ChronicDisturbanceGenerator",
-    "make_fire_event",
-    "make_wind_event",
+    "ChronicDisturbanceGenerator"
 ]

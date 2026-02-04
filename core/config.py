@@ -110,7 +110,7 @@ RISK_PROFILES: Dict[RiskLevel, RiskProfile] = {
         ),
         disturbance=DisturbanceParams(
             p_mild=0.01,
-            severe_mean_interval=50.0,  # 50-year return
+            severe_mean_interval=60.0,  # 60-year return
             mild_tpa_multiplier=0.90,
             mild_hd_multiplier=0.98,
             severe_tpa_multiplier=0.50,
@@ -128,7 +128,7 @@ RISK_PROFILES: Dict[RiskLevel, RiskProfile] = {
         ),
         disturbance=DisturbanceParams(
             p_mild=0.02,
-            severe_mean_interval=25.0,  # 25-year return
+            severe_mean_interval=30.0,  # 30-year return
             mild_tpa_multiplier=0.85,
             mild_hd_multiplier=0.95,
             severe_tpa_multiplier=0.40,
@@ -146,7 +146,7 @@ RISK_PROFILES: Dict[RiskLevel, RiskProfile] = {
         ),
         disturbance=DisturbanceParams(
             p_mild=0.05,
-            severe_mean_interval=15.0,  # 15-year return
+            severe_mean_interval=10.0,  # 10-year return
             mild_tpa_multiplier=0.80,
             mild_hd_multiplier=0.92,
             severe_tpa_multiplier=0.30,

@@ -124,6 +124,7 @@ Deliverable: minimal tests that prevent regression in the new stochastic pipelin
 3. Implement size-class thinning and connect it to both environment actions and transition matrices.
 4. Generate transition matrices for each risk profile and implement value iteration to solve them.
 5. Write a short evaluation script to compare policies across risk profiles.
+6. Implement the Streamlit UI for improved debugging and interactivity.
 
 ## Open questions to resolve early
 - Where exactly is the “real data” for noise bounds (CSV/Excel paths, and what variables/columns)?
