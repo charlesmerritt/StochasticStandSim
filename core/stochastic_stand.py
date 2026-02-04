@@ -579,6 +579,12 @@ class StateDiscretizer:
         i_ba = rem % n_ba
         return i_age, i_tpa, i_ba
 
+    def encode_from_indices(self, i_age: int, i_tpa: int, i_ba: int) -> int:
+        """Convert bin indices to a single state index."""
+        n_tpa = len(self.tpa_bins) - 1
+        n_ba = len(self.ba_bins) - 1
+        return i_age * (n_tpa * n_ba) + i_tpa * n_ba + i_ba
+
 
 ThinMode = Literal["constant_qmd", "smallest_first"]
 

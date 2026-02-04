@@ -171,7 +171,7 @@ def estimate_product_distribution(
 class ProductPrices:
     """Stumpage prices by product class ($/ton)."""
     pulpwood: float = 9.51
-    chip_n_saw: float = 15.0  # Between pulp and sawtimber
+    chip_n_saw: float = 23.51
     sawtimber: float = 27.82
 
 
