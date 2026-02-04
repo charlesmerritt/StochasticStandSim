@@ -1,13 +1,13 @@
 # Fdb version 4
-["biber build/thesis"] 1769598146.83452 "build/thesis.bcf" "build/thesis.bbl" "build/thesis" 1769598151.93157 0
-  "build/thesis.bcf" 1769598151.86744 111875 ec1472bc70d23985c8fd3bb050172bef "pdflatex"
+["biber build/thesis"] 0 "build/thesis.bcf" "build/thesis.bbl" "build/thesis" 0 -1
+  "build/thesis.bcf" 1770212633.90743 111964 02ae2a7725f0b6f13b422ef8af30550e "pdflatex"
   "references.bib" 1769597535.00744 44354 57197d5dafad8c4a6bb3f2f9fa649a45 ""
   (generated)
   "build/thesis.bbl"
   "build/thesis.blg"
   (rewritten before read)
-["pdflatex"] 1769598150.95475 "/home/ChazMerritt/StochasticStandSim/paper/thesis.tex" "build/thesis.pdf" "thesis" 1769598151.93184 0
-  "/home/ChazMerritt/StochasticStandSim/paper/thesis.tex" 1769598145.60344 46862 1ca0a8eb13e7a2c8b9bdd785b5aa405b ""
+["pdflatex"] 1770212632.68915 "/home/ChazMerritt/StochasticStandSim/paper/thesis.tex" "build/thesis.pdf" "thesis" 1770212633.99087 2
+  "/home/ChazMerritt/StochasticStandSim/paper/thesis.tex" 1770212630.99543 45630 0249d97d4915f20327fabd3745b91627 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/jknappen/ec/tcrm1095.tfm" 1136768653 1536 02c06700a42be0f5a28664c7273f82e7 ""
@@ -127,15 +127,19 @@
   "/usr/local/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1734826970 5485709 8129e419010b46b234085a26866cdb87 ""
   "/usr/local/texlive/2024/texmf-var/web2c/pdftex/pdflatex.fmt" 1734827076 3343777 8c9828b7bbe8a51dfc7cb57adbe43d7a ""
   "/usr/local/texlive/2024/texmf.cnf" 1734826966 455 5b996dcaa0eb4ef14a83b026bc0a008c ""
-  "build/thesis.aux" 1769598151.86744 13497 e0831491c28840cdf8fdc0539b7e02ef "pdflatex"
-  "build/thesis.bbl" 1769598148.94344 66012 04bae14f36e8101bf8f44225984b59a9 "biber build/thesis"
-  "build/thesis.lof" 1769598151.86744 209 5ded31e462490099c39c2399b57c2a33 "pdflatex"
-  "build/thesis.lot" 1769598151.86744 304 fe51a2a1077a4c5b873ddfdf38bce46c "pdflatex"
-  "build/thesis.out" 1769598151.86744 4009 c4098adf00a33013663feab18b078fe0 "pdflatex"
-  "build/thesis.run.xml" 1769598151.86744 2325 1e0b7b1d3b8141f85af9cf8a75aa07fc "pdflatex"
-  "build/thesis.toc" 1769598151.86744 3147 9a357ed52009a28a6360274247dd4692 "pdflatex"
-  "figs/agent_env_loop_barto_rl.png" 1769590767.42743 21592 c9aced6de3438e653932ffdb59c7e1b1 ""
-  "thesis.tex" 1769598145.60344 46862 1ca0a8eb13e7a2c8b9bdd785b5aa405b ""
+  "build/figs/agent_env_loop_barto_rl.png" 0 -1 0 ""
+  "build/thesis.aux" 1770212633.90343 14079 87fbd05bf643208995d16db6bc0a2b00 "pdflatex"
+  "build/thesis.bbl" 1770192757.15568 66012 04bae14f36e8101bf8f44225984b59a9 "biber build/thesis"
+  "build/thesis.lof" 1770212633.90743 329 50781e56aa677e0e010a22f984461c91 "pdflatex"
+  "build/thesis.lot" 1770212633.90743 394 d0ac424510bbe83d18b5d29ecd530ab5 "pdflatex"
+  "build/thesis.out" 1770212633.90343 4009 c4098adf00a33013663feab18b078fe0 "pdflatex"
+  "build/thesis.toc" 1770212633.90743 3148 3c1c3d30f965afeec93fce20f86f3db5 "pdflatex"
+  "figs/agent_env_loop_barto_rl.png" 0 -1 0 ""
+  "figs/stochastic_growth_by_catastrophe_1.png" 1770209445.11483 309699 ca0ae979bbc85ec0d92171ca533b0c02 ""
+  "thesis.lof" 0 -1 0 ""
+  "thesis.lot" 0 -1 0 ""
+  "thesis.tex" 1770212630.99543 45630 0249d97d4915f20327fabd3745b91627 ""
+  "thesis.toc" 0 -1 0 ""
   "uga.sty" 1769588847.53942 30839 624f38933e5bb21be79000dcf38d356a ""
   (generated)
   "build/thesis.aux"
