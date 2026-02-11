@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.11.19)  4 FEB 2026 09:50
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.11.19)  11 FEB 2026 00:30
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -518,15 +518,7 @@ Package biblatex Info: Automatic encoding selection.
 
 Package biblatex Info: Trying to load bibliographic data...
 Package biblatex Info: ... file 'thesis.bbl' found.
- (./thesis.bbl
-
-Package biblatex Warning: The following entry could not be found
-(biblatex)                in the database:
-(biblatex)                harrinsonYieldPredictionGrowth1996
-(biblatex)                Please verify the spelling and rerun
-(biblatex)                LaTeX afterwards.
-
-)
+ (./thesis.bbl)
 Package biblatex Info: Reference section=0 on input line 70.
 Package biblatex Info: Reference segment=0 on input line 70.
  (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
@@ -549,7 +541,6 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 48
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
 Package hyperref Info: Link coloring OFF on input line 70.
- (./thesis.out) (./thesis.out)
 \@outlinefile=\write4
 \openout4 = `thesis.out'.
 
@@ -562,12 +553,17 @@ LaTeX Font Info:    Trying to load font information for U+msb on input line 73.
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] [2]
 pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.78 
-      [1] [2{/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
+l.83 
+      [1]
+pdfTeX warning (ext4): destination with the same identifier (name{page.ii}) has been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.83 
+      [2{/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
 You have requested an approval page for ELECTRONIC submission.
 [3] [4
 
@@ -577,126 +573,322 @@ Package hyperref Warning: bookmark level for unknown pseudochapter defaults to 0
 
 [5
 
-] (./thesis.toc [6
-
-])
+]
+No file thesis.toc.
 \tf@toc=\write5
 \openout5 = `thesis.toc'.
 
- [7] (./thesis.lof)
+[6
+
+]
+No file thesis.lof.
 \tf@lof=\write6
 \openout6 = `thesis.lof'.
 
- [8
+[7
 
-] (./thesis.lot)
+]
+No file thesis.lot.
 \tf@lot=\write7
 \openout7 = `thesis.lot'.
 
- [9
+[8
 
 ]
 Chapter 1.
 [1
 
-] [2] [3]
-
-LaTeX Warning: Citation 'harrinsonYieldPredictionGrowth1996' on page 4 undefined on input line 119.
-
-
-Overfull \hbox (138.26463pt too wide) in paragraph at lines 119--120
-[]\OT1/cmr/m/n/12 The missing link between tried and true empir-ical stand growth models []
- []
-
-[4] [5] [6] [7]
+] [2] [3] [4] [5] [6] [7]
 Chapter 2.
-<figs/agent_env_loop_barto_rl.png, id=233, 264.99pt x 99.87312pt>
-File: figs/agent_env_loop_barto_rl.png Graphic file (type png)
-<use figs/agent_env_loop_barto_rl.png>
-Package pdftex.def Info: figs/agent_env_loop_barto_rl.png  used on input line 193.
-(pdftex.def)             Requested size: 264.98935pt x 99.87288pt.
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
 [8
 
-] [9 <./figs/agent_env_loop_barto_rl.png>] [10] [11] [12] [13] [14] [15]
-Overfull \hbox (4.09148pt too wide) in paragraph at lines 323--324
+] [9] [10] [11] [12] [13] [14]
+Overfull \hbox (4.09148pt too wide) in paragraph at lines 304--305
 []\OT1/cmr/m/n/12 ``Optimizing high-dimensional stochastic forestry via rein-force-ment learning'' ([]Tahvonen
  []
 
-[16]
+[15]
 Chapter 3.
-[17
+[16
 
-] [18] [19]
-<figs/stochastic_growth_by_catastrophe_1.png, id=347, 642.84164pt x 718.72514pt>
-File: figs/stochastic_growth_by_catastrophe_1.png Graphic file (type png)
-<use figs/stochastic_growth_by_catastrophe_1.png>
-Package pdftex.def Info: figs/stochastic_growth_by_catastrophe_1.png  used on input line 356.
-(pdftex.def)             Requested size: 469.75499pt x 525.2243pt.
+]
 
-Underfull \hbox (badness 10000) in paragraph at lines 400--400
-[]\OT1/cmr/m/n/10.95 Pre-Commercial
- []
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:335: LaTeX Error: Something's wrong--perhaps a missing \item.
 
-[20] [21 <./figs/stochastic_growth_by_catastrophe_1.png>] [22] [23] [24]
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.335 \item \textbf
+                   {Fixed Rotation (FR-T)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:335: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.335 \item \textbf
+                   {Fixed Rotation (FR-T)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:335: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.335 \item \textbf
+                   {Fixed Rotation (FR-T)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:338: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.338 \item \textbf
+                   {Biological Rotation (MAI Rule)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:338: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.338 \item \textbf
+                   {Biological Rotation (MAI Rule)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:338: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.338 \item \textbf
+                   {Biological Rotation (MAI Rule)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:341: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.341 \item \textbf
+                   {Basal Area Threshold Thinning (BAT)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:341: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.341 \item \textbf
+                   {Basal Area Threshold Thinning (BAT)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:341: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.341 \item \textbf
+                   {Basal Area Threshold Thinning (BAT)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:344: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.344 \item \textbf
+                   {Salvage-Responsive Rotation (SR)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:344: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.344 \item \textbf
+                   {Salvage-Responsive Rotation (SR)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:344: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.344 \item \textbf
+                   {Salvage-Responsive Rotation (SR)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:347: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.347 \item \textbf
+                   {Fertilization-Augmented Rotation (FA)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:347: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.347 \item \textbf
+                   {Fertilization-Augmented Rotation (FA)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:347: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.347 \item \textbf
+                   {Fertilization-Augmented Rotation (FA)} \\
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+
+/home/chaz/projects/stochastic_stand_simulator/paper/thesis.tex:350: LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.350 \end{enumerate}
+                     
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[17] [18] [19] [20]
 Chapter 4.
-LaTeX Font Info:    Trying to load font information for OML+cmr on input line 476.
-(/usr/share/texlive/texmf-dist/tex/latex/base/omlcmr.fd
-File: omlcmr.fd 2023/04/13 v2.5m Standard LaTeX font definitions
-)
-LaTeX Font Info:    Font shape `OML/cmr/bx/n' in size <12> not available
-(Font)              Font shape `OML/cmm/b/it' tried instead on input line 476.
+<figs/stochastic_growth_by_catastrophe_2.png, id=223, 642.84164pt x 718.72514pt>
+File: figs/stochastic_growth_by_catastrophe_2.png Graphic file (type png)
+<use figs/stochastic_growth_by_catastrophe_2.png>
+Package pdftex.def Info: figs/stochastic_growth_by_catastrophe_2.png  used on input line 424.
+(pdftex.def)             Requested size: 469.75499pt x 525.2243pt.
+<figs/mdp_deterministic_vs_stochastic.png, id=225, 867.24pt x 722.7pt>
+File: figs/mdp_deterministic_vs_stochastic.png Graphic file (type png)
+<use figs/mdp_deterministic_vs_stochastic.png>
+Package pdftex.def Info: figs/mdp_deterministic_vs_stochastic.png  used on input line 433.
+(pdftex.def)             Requested size: 469.75499pt x 391.46521pt.
+<figs/product_distribution.png, id=226, 1004.553pt x 570.2103pt>
+File: figs/product_distribution.png Graphic file (type png)
+<use figs/product_distribution.png>
+Package pdftex.def Info: figs/product_distribution.png  used on input line 440.
+(pdftex.def)             Requested size: 469.75499pt x 266.64157pt.
+<figs/thin_response.png, id=227, 498.30165pt x 317.988pt>
+File: figs/thin_response.png Graphic file (type png)
+<use figs/thin_response.png>
+Package pdftex.def Info: figs/thin_response.png  used on input line 447.
+(pdftex.def)             Requested size: 469.75499pt x 299.78212pt.
+[21
 
-
-LaTeX Warning: Citation '' on page 25 undefined on input line 476.
-
+] [22 <./figs/stochastic_growth_by_catastrophe_2.png>] [23 <./figs/mdp_deterministic_vs_stochastic.png>] [24 <./figs/product_distribution.png> <./figs/thin_response.png>]
+Chapter 5.
 [25
 
 ]
-Chapter 5.
+Chapter 6.
 [26
 
-]
-Chapter 6.
-[27
+] [27
 
-] [28
-
-] [29] [30] [31]
+] [28] [29]
 pdfTeX warning (ext4): destination with the same identifier (name{chapter.1}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.489 \chapter{Appendix Title}
+l.468 \chapter{Appendix Title}
                               
 Appendix A.
-[32
+[30
 
 ] (./thesis.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
-Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: C4098ADF00A33013663FEAB18B078FE0;4009.
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package rerunfilecheck Warning: File `thesis.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `thesis.out':
+(rerunfilecheck)             Before: <no file>
+(rerunfilecheck)             After:  1BBC86008037BAD7583264F1DD3A9860;2074.
+
+Package biblatex Warning: Please (re)run Biber on the file:
+(biblatex)                thesis
+(biblatex)                and rerun LaTeX afterwards.
+
 Package logreq Info: Writing requests to 'thesis.run.xml'.
 \openout1 = `thesis.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 17777 strings out of 474222
- 310377 string characters out of 5748732
- 1935975 words of memory out of 5000000
- 39727 multiletter control sequences out of 15000+600000
- 567082 words of font info for 69 fonts, out of 8000000 for 9000
+ 17629 strings out of 474222
+ 307733 string characters out of 5748732
+ 1934975 words of memory out of 5000000
+ 39608 multiletter control sequences out of 15000+600000
+ 564527 words of font info for 60 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 66i,11n,81p,2062b,1683s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1095.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on thesis.pdf (42 pages, 535011 bytes).
+ 66i,6n,81p,2062b,1683s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1200.pfb>
+Output written on thesis.pdf (40 pages, 1269772 bytes).
 PDF statistics:
- 556 PDF objects out of 1000 (max. 8388607)
- 468 compressed objects within 5 object streams
- 113 named destinations out of 1000 (max. 500000)
- 211 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 389 PDF objects out of 1000 (max. 8388607)
+ 311 compressed objects within 4 object streams
+ 100 named destinations out of 1000 (max. 500000)
+ 21 words of extra memory for PDF output out of 10000 (max. 10000000)
 
