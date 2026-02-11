@@ -674,6 +674,54 @@
       \verb 10.1139/cjfr-2020-0447
       \endverb
     \endentry
+    \entry{markowitzUtilityWealth1952}{article}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=bdfa1c8585b5a4ae901315043a00f2f2}{%
+           family={Markowitz},
+           familyi={M\bibinitperiod},
+           given={Harry},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{fullhash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{bibnamehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{authorbibnamehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{authornamehash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \strng{authorfullhash}{bdfa1c8585b5a4ae901315043a00f2f2}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{(b) acts in the face of known odds so as to maximize expected utility. (2) The utility function is as illustrated in Figure i. We may assume it to be a continuous curve with at least first and second derivatives.5 Let U be utility and W be wealth. Below some point A, (a2U)/(0W2) {$<$} o; between A and B, (02U)/Q(W2) {$>$} o; above B, (02U)/(0W2) {$<$} a. To tell geometrically whether or not an individual would prefer Wo with certainty or a "fair"6 chance of rising to WI or falling to}
+      \field{issn}{0022-3808, 1537-534X}
+      \field{journaltitle}{Journal of Political Economy}
+      \field{langid}{english}
+      \field{month}{4}
+      \field{number}{2}
+      \field{shortjournal}{Journal of Political Economy}
+      \field{title}{The {{Utility}} of {{Wealth}}}
+      \field{urlday}{25}
+      \field{urlmonth}{8}
+      \field{urlyear}{2025}
+      \field{volume}{60}
+      \field{year}{1952}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{151\bibrangedash 158}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1086/257177
+      \endverb
+      \verb{urlraw}
+      \verb https://www.journals.uchicago.edu/doi/10.1086/257177
+      \endverb
+      \verb{url}
+      \verb https://www.journals.uchicago.edu/doi/10.1086/257177
+      \endverb
+    \endentry
     \entry{messierDealingNonlinearityUncertainty2016}{article}{}
       \name{author}{4}{}{%
         {{un=0,uniquepart=base,hash=2e4153d9f7c9f61ff2d34a1ea2ea2297}{%
@@ -804,6 +852,71 @@
       \verb https://linkinghub.elsevier.com/retrieve/pii/S037722171930791X
       \endverb
     \endentry
+    \entry{stable-baselines3}{article}{}
+      \name{author}{6}{}{%
+        {{un=0,uniquepart=base,hash=646dfae388f2fca3d68ff9214acd722c}{%
+           family={Raffin},
+           familyi={R\bibinitperiod},
+           given={Antonin},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=165a914db6ae4e223ac87e4baef87090}{%
+           family={Hill},
+           familyi={H\bibinitperiod},
+           given={Ashley},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f443af3aea10cb9b968ba9d4c0dcbd0d}{%
+           family={Gleave},
+           familyi={G\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2c6bdcb44a478971ad9b3b007535f034}{%
+           family={Kanervisto},
+           familyi={K\bibinitperiod},
+           given={Anssi},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b76527a76a4bb1c475b635a35021d0ef}{%
+           family={Ernestus},
+           familyi={E\bibinitperiod},
+           given={Maximilian},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cfc1b2bcb8937cfd9453ed45243e18f2}{%
+           family={Dormann},
+           familyi={D\bibinitperiod},
+           given={Noah},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{5044a4768c7fc20f25fb680bb11f4aaf}
+      \strng{fullhash}{e3c43789f8de334374c8e95d9d514552}
+      \strng{bibnamehash}{e3c43789f8de334374c8e95d9d514552}
+      \strng{authorbibnamehash}{e3c43789f8de334374c8e95d9d514552}
+      \strng{authornamehash}{5044a4768c7fc20f25fb680bb11f4aaf}
+      \strng{authorfullhash}{e3c43789f8de334374c8e95d9d514552}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Machine Learning Research}
+      \field{number}{268}
+      \field{title}{Stable-Baselines3: Reliable Reinforcement Learning Implementations}
+      \field{volume}{22}
+      \field{year}{2021}
+      \field{pages}{1\bibrangedash 8}
+      \range{pages}{8}
+      \verb{urlraw}
+      \verb http://jmlr.org/papers/v22/20-1364.html
+      \endverb
+      \verb{url}
+      \verb http://jmlr.org/papers/v22/20-1364.html
+      \endverb
+    \endentry
     \entry{stevensOptimalHarvestRates1986}{thesis}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=bff83fc5c974bafed3617aec0cf210d2}{%
@@ -838,6 +951,48 @@
       \field{type}{Thesis}
       \field{year}{1986}
       \field{dateera}{ce}
+    \endentry
+    \entry{suttonReinforcementLearningIntroduction2020}{book}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=eb920e5277d3d5fd0903f3cd41e11871}{%
+           family={Sutton},
+           familyi={S\bibinitperiod},
+           given={Richard\bibnamedelima S.},
+           giveni={R\bibinitperiod\bibinitdelim S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=63f88d8d8cc347f8cc505512c809e269}{%
+           family={Barto},
+           familyi={B\bibinitperiod},
+           given={Andrew},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Cambridge, Massachusetts London, England}%
+      }
+      \list{publisher}{1}{%
+        {The MIT Press}%
+      }
+      \strng{namehash}{176c86aa36fab51e81d033c2d8ea8cbe}
+      \strng{fullhash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \strng{bibnamehash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \strng{authorbibnamehash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \strng{authornamehash}{176c86aa36fab51e81d033c2d8ea8cbe}
+      \strng{authorfullhash}{3f6939b7bc162284c23cbb6fb6292c96}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{shorttitle}
+      \field{abstract}{"Reinforcement learning, one of the most active research areas in artificial intelligence, is a computational approach to learning whereby an agent tries to maximize the total amount of reward it receives while interacting with a complex, uncertain environment. In Reinforcement Learning, Richard Sutton and Andrew Barto provide a clear and simple account of the field's key ideas and algorithms."--}
+      \field{edition}{Second edition}
+      \field{isbn}{978-0-262-03924-6}
+      \field{langid}{english}
+      \field{series}{Adaptive Computation and Machine Learning}
+      \field{shorttitle}{Reinforcement Learning}
+      \field{title}{Reinforcement Learning: An Introduction}
+      \field{year}{2020}
     \endentry
     \entry{tahvonenOptimizingHighdimensionalStochastic2022}{article}{}
       \name{author}{5}{}{%
@@ -909,6 +1064,131 @@
       \verb https://linkinghub.elsevier.com/retrieve/pii/S0165188922002561
       \endverb
     \endentry
+    \entry{towers2024gymnasiumstandardinterfacereinforcement}{misc}{}
+      \name{author}{16}{}{%
+        {{un=0,uniquepart=base,hash=56b97afcbff5cf17ceacacabc82810be}{%
+           family={Towers},
+           familyi={T\bibinitperiod},
+           given={Mark},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=569412fb01366fe42149e701ea315457}{%
+           family={Kwiatkowski},
+           familyi={K\bibinitperiod},
+           given={Ariel},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=37dd89fdfe9c385b46db432c71ed88b1}{%
+           family={Terry},
+           familyi={T\bibinitperiod},
+           given={Jordan},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=c21e2d5541f60fd8fd0e8f65701d472c}{%
+           family={Balis},
+           familyi={B\bibinitperiod},
+           given={John\bibnamedelima U.},
+           giveni={J\bibinitperiod\bibinitdelim U\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a6d4dfeaaa2a42d859eb847f047c92c6}{%
+           family={Cola},
+           familyi={C\bibinitperiod},
+           given={Gianluca\bibnamedelima De},
+           giveni={G\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8a006dd742c8f7a1e71c8d5b862abaec}{%
+           family={Deleu},
+           familyi={D\bibinitperiod},
+           given={Tristan},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ed70b46c42501b146d70523e5935e1bd}{%
+           family={Goulão},
+           familyi={G\bibinitperiod},
+           given={Manuel},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ba41f75ecc77ba0b7dbae4c0927cfe77}{%
+           family={Kallinteris},
+           familyi={K\bibinitperiod},
+           given={Andreas},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=19c1c1591bd4f9c93bb0bd7a388890b2}{%
+           family={Krimmel},
+           familyi={K\bibinitperiod},
+           given={Markus},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b0066d33e0e2e5d916c42b4eb9342a19}{%
+           family={KG},
+           familyi={K\bibinitperiod},
+           given={Arjun},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7924a9a0a06c93726bed7eed45a19aa3}{%
+           family={Perez-Vicente},
+           familyi={P\bibinithyphendelim V\bibinitperiod},
+           given={Rodrigo},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=076e673542ae3086dd8a964e00192590}{%
+           family={Pierré},
+           familyi={P\bibinitperiod},
+           given={Andrea},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=572b48d10d1ca3e03df3bc08618dd048}{%
+           family={Schulhoff},
+           familyi={S\bibinitperiod},
+           given={Sander},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7b81c11069a312b5e61080419325809c}{%
+           family={Tai},
+           familyi={T\bibinitperiod},
+           given={Jun\bibnamedelima Jet},
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=0337c2df415d8e827c53f75b4e25b659}{%
+           family={Tan},
+           familyi={T\bibinitperiod},
+           given={Hannah},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9a6176749241c97e002f2882448b5668}{%
+           family={Younis},
+           familyi={Y\bibinitperiod},
+           given={Omar\bibnamedelima G.},
+           giveni={O\bibinitperiod\bibinitdelim G\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{671a5b29dade9bddb3ee8cb7bc0889d0}
+      \strng{fullhash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \strng{bibnamehash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \strng{authorbibnamehash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \strng{authornamehash}{671a5b29dade9bddb3ee8cb7bc0889d0}
+      \strng{authorfullhash}{61bf2670d424b8f0d899fb5c1e45a1fd}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.LG}
+      \field{eprinttype}{arXiv}
+      \field{title}{Gymnasium: A Standard Interface for Reinforcement Learning Environments}
+      \field{year}{2024}
+      \verb{eprint}
+      \verb 2407.17032
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2407.17032
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2407.17032
+      \endverb
+    \endentry
     \entry{weiskittelForestGrowthYield2011}{book}{}
       \name{editor}{1}{}{%
         {{un=0,uniquepart=base,hash=009c03d1d78f2063ddd580b2a37d2478}{%
@@ -945,7 +1225,39 @@
       \verb 10.1002/9781119998518
       \endverb
     \endentry
+    \entry{woodsKernLongStudy}{article}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=46d9eefc90160e359e4859dc1926fe1b}{%
+           family={Woods},
+           familyi={W\bibinitperiod},
+           given={Kerry\bibnamedelima D.},
+           giveni={K\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=801c4756c6d99e777bae7299d7bfbbac}{%
+           family={Kern},
+           familyi={K\bibinitperiod},
+           given={Christel\bibnamedelima C.},
+           giveni={C\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{cfae8fe32844b8ce5f0aa5dda904a479}
+      \strng{fullhash}{58eccb6da109292fa3f2b322f391fad0}
+      \strng{bibnamehash}{58eccb6da109292fa3f2b322f391fad0}
+      \strng{authorbibnamehash}{58eccb6da109292fa3f2b322f391fad0}
+      \strng{authornamehash}{cfae8fe32844b8ce5f0aa5dda904a479}
+      \strng{authorfullhash}{58eccb6da109292fa3f2b322f391fad0}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Ecosphere}
+      \field{title}{Intermediate disturbances drive long-term fluctuation in old-growth forest biomass: an 84-yr temperate forest record}
+      \field{year}{2022}
+    \endentry
   \enddatalist
+  \missing{harrinsonYieldPredictionGrowth1996}
 \endrefsection
 \endinput
 

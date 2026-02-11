@@ -1,2 +1,4 @@
-\contentsline {figure}{\numberline {2.1}{\ignorespaces The agent-environment interaction in a MDP. Adapted from \blx@tocontentsinit {0}\textcite {suttonReinforcementLearningIntroduction2020}}}{9}{figure.2.1}%
-\contentsline {figure}{\numberline {3.1}{\ignorespaces Stochastic growth by catastrophe probability.}}{21}{figure.3.1}%
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Stochastic growth by catastrophe probability.}}{22}{figure.4.1}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Deterministic vs. stochastic MDP comparison.}}{23}{figure.4.2}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Product distribution following extended rotation (40 years).}}{24}{figure.4.3}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Thin response defined by the baseline growth model.}}{24}{figure.4.4}%
