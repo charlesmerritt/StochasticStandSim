@@ -330,8 +330,6 @@ Management decisions are implemented through predefined, rule-based prescription
 
 \begin{enumerate}
 
-TK: Not all implemented
-
 \item \textbf{Fixed Rotation (FR-T)} \\
 The stand is harvested at a predetermined rotation age $T$. No intermediate treatments are applied unless explicitly specified. We evaluate rotation ages of 25, 30, 35, and 40 years to represent a plausible range for loblolly pine plantations.
 
@@ -451,9 +449,24 @@ As expected, the deterministic baseline consistently overestimates the value of 
 
 \chapter{Discussion}
 
-- Diminishing terminal value unsurprising given frequency of events, risk collapses stand quality and value
-- When disturbances are negligible, fixed rotations of 25-30 years are strong benchmarks.
-- Creating a stochastic wrapper on a deterministic growth model is ineffective.
+A number of potential improvements or modifications to the model could be considered. First, a decision was made to reset the stand to an early age following a catastrophic event. This is a simplification that could be improved by incorporating the effects of natural regeneration and recruitment of new trees to the lowest size class following suit with the work of \textcite{buongiornoAdaptiveEconomicEcological2015}. 
+Other options include splitting the stand into sub-stands (effectively disturbed and undisturbed areas within a stand) and allowing each to respond to disturbances independently. This would allow for more complex interactions between disturbed and undisturbed areas, but would also require more complex modeling of the disturbances and their effects on the stands. In each case, and in the case of the original model, the 
+goal is not to perfectly represent disturbance effects, which are unknown and complex, but to provide a framework for understanding the effects of disturbance frequency on stand value and risk. Ultimately, the simple action of resetting the stand to an early age was chosen not only due to it's simplicity, but also because it aligned with real-world management practices where sufficiently disturbed stands are often salvaged completely.
+
+Additionally, a number of other modifications could be considered. For example, the model could incorporate a more complex growth model, or disturbance model. However, these modifications would require a significant amount of additional work. We limited ourselves to work within the scope of the established \textcite{pmrcHarrisonYieldPredictionGrowth1996} growth and yield model. Future work could explore disturbance types, wherein disturbances such as fire, wind, disease, and insects could be modeled as separate processes. 
+The core idea of our work is to represent stand-level processes of growth and disturbance as stochastic processes within a Markov Decision Process framework. This allows for the representation of the effects of disturbance frequency on stand value and risk in a way that is both mathematically rigorous and computationally tractable. Moreover, the use of the MDP framework promotes new methodology and avenues of research for understanding the effects of stochastic risk in pine stands, including new avenues into the fields of risk-sensitive reinforcement learning.
+
+A straightforward consequence of the methodology we use to model catastrophic disturbances is that the value of the stand decreases as the frequency of catastrophes increases. This is because the value of the stand is determined by the expected value of the stand at the end of the rotation, even rare catastrophic events can wipe out value completely which in turn creates significant variance in the stand trajectories as many runs are repeated during the process of Monte Carlo simulation. More complex models of stand-level disturbance, or modeling the stand spatially may alleviate some of 
+this variance. On the topic of stochasticity itself, opinions are divided. While we would hold that stochasticity is a necessary component of any model of natural systems and that there is tremendous benefit in comparing distributions of outcomes, others may prefer to work squarely in the deterministic realm. We hope to see a continued push towards stochastic modelling in forestry, and to see more research into the effects of stochasticity on stand value and risks, including on the topic of
+catastrophic disturbances which will continue to be relevant as climate change and other anthropogenic factors continue to increase the frequency and severity of disturbances.
+
+It is noted that the 25-30 year fixed rotation is a strong benchmark when disturbances are negligible, but that this is not the case when disturbances are significant. This is likely due to the fact that these benchmarks do not account for the possibility of disturbances wiping out the value of the stand, and the associated variance in the stand trajectory. While this is of course an uncertain kind of risk, it seems that there is some value in having an internal model of external risks
+to the stand and acting accordingly. For instance, if you hold an internal model of disturbances with which you expect a catastrophic event to occur once every 20, you may elect to harvest a stand a few years early to avoid the risk of a catastrophic event. More sophisticated models of stand-level disturbance, or modeling the stand spatially may alleviate some of this uncertainty to a degree. However, the question ultimately boils down to the tradeoff between the value of the stand and the risk (in terms of expected value) of a catastrophic event. 
+To this end, we would encourage more work to focus on the use of statistical markers of risk, such as Value at Risk (VaR) and Conditional Value at Risk (CVaR) to better understand the effects of stochasticity on stand value and risk.
+
+Finally, it is important to note that creating a stochastic wrapper on a deterministic growth model is ineffective. As mentioned, we utilized an established growth and yield model for pine stands for this work, to implement stochasticity, a wrapper class was developed to augment specific growth functions with noise. This approach is not effective as it does not account for the fact that the growth model is a function of the state of the stand, and that the noise is not. For stochasticity to be effective, it must allow for disparate stand values to remain in coordination with one another.
+For instance, BA and HD growth are inextricably connected values of the stand, and variance should be allowed to propagate through the system in a way that accounts for this relationship. All of this creates an uphill battle for researchers who wish to implement a stochastic model on top of a deterministic one, and requires a deep understanding of the nature of forest systems and growth modelling practices to accurately represent the relationships between the various values of the stand. In this work, we focus primarily on stochasticity in growth as a kind of "modelling error" by using the results of work such as \textcite{peayGrowthYieldModel2022} to compare the results of the stochastic model to the results of the deterministic model.
+
 
 
 %\section{Synthesis of Findings}
