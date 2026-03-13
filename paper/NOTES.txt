@@ -1,0 +1,53 @@
+From 1000 simulations these graphics display mean dominant height and mean basal area
+
+Mean dominant Height and mean basal area is reduced in the higher frequency disturbance regime due to the effects of catastrophes "resetting" the stand to an earlier age. 
+
+Add n(simulations) to all graphs), show the thinning in the deterministic setting as well or both thinned and unthinned, describe the condition for thinning rule.
+
+Why does TPA go up in the most uncertain case?
+
+Make the number of stand value near the mean itself, fix the box and whisker plots display.
+
+Shift the thin effect plot up to start the green line @ 300
+	
+
+Discussion:
+
+In the future we might make some enhancements to the various kinds of risk that might be made and the way it 
+is represented. Zelig and other GAP models that require a seed to run growth scenarios. Steve Garmin. 
+
+Some people want the same answer every time, getting a different answer every time the model is run is 
+uncomfortable for some. However, using Monte Carlo methods allows us to not get just a single answer, but a 
+distribution over possible outcomes which might be seen by some as robust to uncertain outcomes.
+
+The Monte-Carlo valuation approach is used to compare the value functions of the stand MDPs, we stop short of 
+applying full reinforcement learning to solve management regimes under uncertainty. The key insight we provide 
+is that rule-based action "triggers" which conditionally evaluate if a certain action is reasonable
+under normative operational constraints is preferable to the raw continuous action space that is often used 
+in standard MDPs. 
+
+---
+Conclusion:
+
+By extending empirical, deterministic growth models with stochastic process noise and probabilistic disturbance 
+regimes, we create a stochastic simulator to capture the uncertainties latent in the development of pine stands. 
+This simulator is then used to evaluate the hidden cost of deterministic management policies and the importance 
+of accounting for uncertainty in long-horizon timber management, even in the relatively short rotation age of the 
+pine stands considered in this study. 
+
+Deterministic simulations consistently bias projected stand values, with the expected value of the stand 
+diminishing with increasing uncertainty. Indeed, the expected value of the stand may even be negative in the 
+most uncertain case due to the catastrophic effects of frequent disturbances. 
+
+Rather than a fixed, deterministic projection of value in the deterministic case, we use Monte Carlo 
+simulation to generate a distribution of possible values, with the most uncertain case exhibiting a wide range 
+of possible values and a higher likelihood of negative values. In this MDP framework, the value function 
+represents the expected value of the stand at the end of the rotation, given a particular management policy 
+and a particular disturbance regime. 
+
+
+
+Limitations:
+
+---
+Adjust the introduction to match the actual implementation of the stochastic simulator.
