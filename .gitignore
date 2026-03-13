@@ -1,8 +1,9 @@
-.idea/
 __pycache__/
-venv/
+.venv/
 wandb/
 logs/
 pmrc/
 !data/example_stands.csv
 models/
+*/__pycache__/
+paper/build/

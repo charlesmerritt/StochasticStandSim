@@ -137,7 +137,7 @@ def main() -> None:
         tuple[tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]],
     ] = {}
     ages_reference: np.ndarray | None = None
-    n_runs = 400
+    n_runs = 1000
 
     for idx, (key, label, interval) in enumerate(CONFIGS):
         stochastic = StochasticPMRC(
@@ -180,7 +180,7 @@ def main() -> None:
         )
 
     if ages_reference is not None:
-        plot_growth_comparison(ages_reference, trajectories, n_runs=1000, show_sd=False)
+        plot_growth_comparison(ages_reference, trajectories, n_runs=n_runs, show_sd=False)
 
 
 if __name__ == "__main__":
