@@ -43,7 +43,7 @@ def main() -> None:
     mid_ref.run_to(15.0)
     unthin_mid_ages, unthin_mid_ba = _simulate_baseline(stand_unthin_mid, end_age)
 
-    stand_unthin_low = _build_stand(tpa=162.0, si25=si25, age=start_age)
+    stand_unthin_low = _build_stand(tpa=300.0, si25=si25, age=start_age)
     preview_low = Stand(replace(stand_unthin_low.state), stand_unthin_low.cfg)
     preview_low.run_to(15.0)
     low_ages, low_ba = _simulate_baseline(stand_unthin_low, end_age)
@@ -58,8 +58,8 @@ def main() -> None:
 
     fig, ax = plt.subplots(figsize=(7, 4.5), dpi=200)
     ax.plot(unthin_mid_ages, unthin_mid_ba, label="Unthinned 380 TPA @ age 5", color="#2c3e50", linewidth=2.2)
-    ax.plot(thin_ages, thin_ba, label="Thinned: high-density → match 162-TPA BA", color="#c0392b", linewidth=2.2)
-    ax.plot(low_ages, low_ba, label="Unthinned 162 TPA @ age 5", color="#27ae60", linestyle="--", linewidth=2.0)
+    ax.plot(thin_ages, thin_ba, label="Thinned: high-density -> match 300-TPA BA", color="#c0392b", linewidth=2.2)
+    ax.plot(low_ages, low_ba, label="Unthinned 300 TPA @ age 5", color="#27ae60", linestyle="--", linewidth=2.0)
 
     # highlight BA gap between thinned stand and low-density unthinned baseline
     ages_after, thin_after, low_after = [], [], []
@@ -75,7 +75,7 @@ def main() -> None:
     ax.set_ylabel("Basal area (ft²/ac)")
     ax.set_xlim(start_age, end_age)
     ax.set_ylim(0, max(unthin_mid_ba) * 1.05)
-    ax.set_title("Basal area response to thinning (PMRC competition index)")
+    ax.set_title("Basal area response to thinning (300-TPA reference baseline)")
     ax.grid(True, linestyle="--", alpha=0.4)
     ax.legend()
 

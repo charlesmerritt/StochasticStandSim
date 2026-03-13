@@ -124,10 +124,16 @@ def simulate_trajectory(
         'hd': [state.hd],
         'thinned': False,
         'disturbed': [False],
+        'severe_event_count': 0,
+        'reset_event_count': 0,
+        'recruitment_total': 0.0,
     }
     
     disturbed = False
     thinned = False
+    severe_event_count = 0
+    reset_event_count = 0
+    recruitment_total = 0.0
     
     for year in range(1, horizon + 1):
         # Deterministic thinning at age 15 when BA > threshold
@@ -136,7 +142,16 @@ def simulate_trajectory(
             thinned = True
         
         # Simulate growth
-        state, dist_label, _, _ = stoch.sample_next_state_with_trace(state, dt=1.0, rng=rng)
+        state, dist_label, event_age, trace = stoch.sample_next_state_with_trace(
+            state,
+            dt=1.0,
+            rng=rng,
+        )
+        recruitment_total += trace.recruitment
+        if dist_label == "severe":
+            severe_event_count += 1
+        if event_age is not None:
+            reset_event_count += 1
         
         # Update disturbance state
         if disturbed:
@@ -151,6 +166,9 @@ def simulate_trajectory(
         trajectory['disturbed'].append(disturbed)
     
     trajectory['thinned'] = thinned
+    trajectory['severe_event_count'] = severe_event_count
+    trajectory['reset_event_count'] = reset_event_count
+    trajectory['recruitment_total'] = recruitment_total
     return trajectory
 
 
@@ -166,12 +184,18 @@ def simulate_trajectories(
     all_tpa = []
     all_hd = []
     thin_count = 0
+    severe_event_counts = []
+    reset_event_counts = []
+    recruitment_totals = []
     
     for i in range(n_trajectories):
         traj = simulate_trajectory(config, risk_profile, horizon, seed=base_seed + i)
         all_ba.append(traj['ba'])
         all_tpa.append(traj['tpa'])
         all_hd.append(traj['hd'])
+        severe_event_counts.append(traj['severe_event_count'])
+        reset_event_counts.append(traj['reset_event_count'])
+        recruitment_totals.append(traj['recruitment_total'])
         if traj['thinned']:
             thin_count += 1
     
@@ -193,6 +217,9 @@ def simulate_trajectories(
         'all_ba': all_ba,
         'all_tpa': all_tpa,
         'all_hd': all_hd,
+        'severe_event_counts': np.array(severe_event_counts),
+        'reset_event_counts': np.array(reset_event_counts),
+        'recruitment_totals': np.array(recruitment_totals),
     }
 
 
@@ -231,6 +258,71 @@ def state_name(idx: int) -> str:
     return f'{ba_str}{tpa_str}{d}'
 
 
+def simulate_deterministic_trajectory(
+    config: BuongiornoConfig,
+    pmrc: PMRCModel,
+    horizon: int,
+    *,
+    apply_thinning: bool,
+) -> dict[str, list[float]]:
+    """Simulate a deterministic trajectory with optional thinning."""
+    age = 1.0
+    k, m = pmrc.k, pmrc.m
+    hd = config.si25 * ((1 - np.exp(-k * age)) / (1 - np.exp(-k * 25.0))) ** m
+    state = StandState(
+        age=age,
+        hd=hd,
+        tpa=config.initial_tpa,
+        ba=pmrc.ba_predict(age, config.initial_tpa, hd, region="ucp"),
+        si25=config.si25,
+        region="ucp",
+    )
+
+    ages: list[float] = []
+    ba_vals: list[float] = []
+    tpa_vals: list[float] = []
+    hd_vals: list[float] = []
+    thinned = False
+
+    for _ in range(horizon + 1):
+        ages.append(state.age)
+        ba_vals.append(state.ba)
+        tpa_vals.append(state.tpa)
+        hd_vals.append(state.hd)
+
+        if len(ages) == horizon + 1:
+            break
+
+        # Align with stochastic path convention: evaluate thinning before growth step.
+        if apply_thinning and int(round(state.age)) == 15 and state.ba > config.auto_thin_threshold and not thinned:
+            state, _ = thin_to_residual_ba_smallest_first(state, config.auto_thin_target)
+            thinned = True
+
+        age2 = state.age + 1.0
+        hd2 = pmrc.hd_project(state.age, state.hd, age2)
+        tpa2 = pmrc.tpa_project(state.tpa, state.si25, state.age, age2)
+        ba2 = pmrc.ba_project(
+            age1=state.age,
+            tpa1=state.tpa,
+            tpa2=tpa2,
+            ba1=state.ba,
+            hd1=state.hd,
+            hd2=hd2,
+            age2=age2,
+            region="ucp",
+        )
+        state = StandState(
+            age=age2,
+            hd=hd2,
+            tpa=tpa2,
+            ba=ba2,
+            si25=state.si25,
+            region=state.region,
+        )
+
+    return {"ages": ages, "ba": ba_vals, "tpa": tpa_vals, "hd": hd_vals}
+
+
 # =============================================================================
 # Main
 # =============================================================================
@@ -238,6 +330,7 @@ def state_name(idx: int) -> str:
 def main():
     config = BuongiornoConfig()
     pmrc = PMRCModel(region="ucp")
+    n_trajectories = 1000
     
     print("=" * 70)
     print("STAND VALUE ESTIMATION UNDER DIFFERENT RISK LEVELS")
@@ -254,6 +347,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     
     results = {}
+    tpa_diagnostics_rows = []
     
     for risk_level in ['low', 'medium', 'high']:
         print(f"\n{'='*70}")
@@ -274,7 +368,12 @@ def main():
         
         # Simulate trajectories
         print("Simulating trajectories...")
-        stats = simulate_trajectories(config, profile, horizon=30, n_trajectories=200)
+        stats = simulate_trajectories(
+            config,
+            profile,
+            horizon=30,
+            n_trajectories=n_trajectories,
+        )
         
         # Compute terminal values for each trajectory
         terminal_values = []
@@ -297,6 +396,17 @@ def main():
             'pv_values': pv_values,
             'P': P,
         }
+        for i in range(len(stats["all_tpa"])):
+            tpa_diagnostics_rows.append(
+                {
+                    "risk_level": risk_level,
+                    "trajectory_id": i,
+                    "terminal_tpa": float(stats["all_tpa"][i, -1]),
+                    "severe_event_count": int(stats["severe_event_counts"][i]),
+                    "reset_event_count": int(stats["reset_event_counts"][i]),
+                    "recruitment_total": float(stats["recruitment_totals"][i]),
+                }
+            )
         
         print(f"\nResults:")
         print(f"  Thinning rate: {stats['thin_rate']*100:.1f}%")
@@ -305,6 +415,38 @@ def main():
         print(f"  Mean terminal value: ${terminal_values.mean():,.0f}")
         print(f"  Std terminal value: ${terminal_values.std():,.0f}")
         print(f"  Mean present value (discounted): ${pv_values.mean():,.0f}")
+
+    tpa_diagnostics_df = pd.DataFrame(tpa_diagnostics_rows)
+    tpa_diagnostics_path = output_dir / "tpa_diagnostics.csv"
+    tpa_diagnostics_df.to_csv(tpa_diagnostics_path, index=False)
+    print(f"\nSaved: {tpa_diagnostics_path}")
+
+    tpa_diagnostics_summary = (
+        tpa_diagnostics_df.groupby("risk_level", as_index=False)
+        .agg(
+            mean_terminal_tpa=("terminal_tpa", "mean"),
+            mean_severe_events=("severe_event_count", "mean"),
+            mean_reset_events=("reset_event_count", "mean"),
+            mean_recruitment=("recruitment_total", "mean"),
+        )
+        .sort_values("risk_level")
+    )
+    tpa_diagnostics_summary_path = output_dir / "tpa_diagnostics_summary.csv"
+    tpa_diagnostics_summary.to_csv(tpa_diagnostics_summary_path, index=False)
+    print(f"Saved: {tpa_diagnostics_summary_path}")
+
+    print("\nTPA Diagnostics Summary (means by risk):")
+    print(
+        tpa_diagnostics_summary.to_string(
+            index=False,
+            formatters={
+                "mean_terminal_tpa": "{:.1f}".format,
+                "mean_severe_events": "{:.2f}".format,
+                "mean_reset_events": "{:.2f}".format,
+                "mean_recruitment": "{:.1f}".format,
+            },
+        )
+    )
     
     # ==========================================================================
     # DELIVERABLE 1: Transition probability tables
@@ -404,7 +546,8 @@ def main():
     axes[1, 1].legend()
     axes[1, 1].grid(True, alpha=0.3)
     
-    plt.tight_layout()
+    fig.suptitle(f'Sample Trajectory Means and Value Distributions (n={n_trajectories})', fontsize=13)
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
     plt.savefig(output_dir / "trajectory_means.png", dpi=150)
     plt.close()
     print(f"Saved: {output_dir}/trajectory_means.png")
@@ -416,60 +559,98 @@ def main():
     print("DELIVERABLE 4: Deterministic vs Stochastic Plot")
     print("=" * 70)
     
-    # Simulate deterministic trajectory
-    det_ages = []
-    det_ba = []
-    det_tpa = []
-    det_hd = []
-    
-    age = 1.0
-    k, m = pmrc.k, pmrc.m
-    hd = config.si25 * ((1 - np.exp(-k * age)) / (1 - np.exp(-k * 25.0))) ** m
-    tpa = config.initial_tpa
-    ba = pmrc.ba_predict(age, tpa, hd, region="ucp")
-    
-    for year in range(32):
-        det_ages.append(age)
-        det_ba.append(ba)
-        det_tpa.append(tpa)
-        det_hd.append(hd)
-        
-        # Deterministic thinning at age 15
-        if year == 14 and ba > config.auto_thin_threshold:
-            # Approximate thinning effect
-            ba = config.auto_thin_target
-            tpa = tpa * (config.auto_thin_target / ba) if ba > 0 else tpa
-        
-        # Grow one year (deterministic)
-        next_age = age + 1
-        next_hd = config.si25 * ((1 - np.exp(-k * next_age)) / (1 - np.exp(-k * 25.0))) ** m
-        tpa = pmrc.tpa_project(tpa, config.si25, age, next_age)
-        age = next_age
-        hd = next_hd
-        ba = pmrc.ba_predict(age, tpa, hd, region="ucp")
+    det_thinned = simulate_deterministic_trajectory(
+        config,
+        pmrc,
+        horizon=30,
+        apply_thinning=True,
+    )
+    det_unthinned = simulate_deterministic_trajectory(
+        config,
+        pmrc,
+        horizon=30,
+        apply_thinning=False,
+    )
     
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     
-    # Plot deterministic
-    axes[0, 0].plot(det_ages, det_ba, 'k-', linewidth=2, label='Deterministic')
-    axes[0, 1].plot(det_ages, det_tpa, 'k-', linewidth=2, label='Deterministic')
-    axes[1, 0].plot(det_ages, det_hd, 'k-', linewidth=2, label='Deterministic')
+    # Plot deterministic baselines: with and without thinning.
+    axes[0, 0].plot(
+        det_thinned["ages"],
+        det_thinned["ba"],
+        "k-",
+        linewidth=2,
+        label="Deterministic (thinning rule active)",
+    )
+    axes[0, 0].plot(
+        det_unthinned["ages"],
+        det_unthinned["ba"],
+        color="0.45",
+        linestyle="-.",
+        linewidth=1.8,
+        label="Deterministic (unthinned baseline)",
+    )
+    axes[0, 1].plot(
+        det_thinned["ages"],
+        det_thinned["tpa"],
+        "k-",
+        linewidth=2,
+        label="Deterministic (thinning rule active)",
+    )
+    axes[0, 1].plot(
+        det_unthinned["ages"],
+        det_unthinned["tpa"],
+        color="0.45",
+        linestyle="-.",
+        linewidth=1.8,
+        label="Deterministic (unthinned baseline)",
+    )
+    axes[1, 0].plot(
+        det_thinned["ages"],
+        det_thinned["hd"],
+        "k-",
+        linewidth=2,
+        label="Deterministic (thinning rule active)",
+    )
+    axes[1, 0].plot(
+        det_unthinned["ages"],
+        det_unthinned["hd"],
+        color="0.45",
+        linestyle="-.",
+        linewidth=1.8,
+        label="Deterministic (unthinned baseline)",
+    )
     
     # Plot stochastic for each risk level
     for risk_level in ['low', 'medium', 'high']:
         stats = results[risk_level]['stats']
         color = colors[risk_level]
         
-        axes[0, 0].plot(stats['ages'], stats['ba_mean'], color=color, 
-                        linestyle='--', label=f'Stochastic ({risk_level})')
+        axes[0, 0].plot(
+            stats['ages'],
+            stats['ba_mean'],
+            color=color,
+            linestyle='--',
+            label=f"Stochastic mean ({risk_level}, n={n_trajectories})",
+        )
         
-        axes[0, 1].plot(stats['ages'], stats['tpa_mean'], color=color, 
-                        linestyle='--', label=f'Stochastic ({risk_level})')
+        axes[0, 1].plot(
+            stats['ages'],
+            stats['tpa_mean'],
+            color=color,
+            linestyle='--',
+            label=f"Stochastic mean ({risk_level}, n={n_trajectories})",
+        )
         
-        axes[1, 0].plot(stats['ages'], stats['hd_mean'], color=color, 
-                        linestyle='--', label=f'Stochastic ({risk_level})')
+        axes[1, 0].plot(
+            stats['ages'],
+            stats['hd_mean'],
+            color=color,
+            linestyle='--',
+            label=f"Stochastic mean ({risk_level}, n={n_trajectories})",
+        )
     
-    # Mark thinning age
+    # Mark thinning age.
     for ax in [axes[0, 0], axes[0, 1], axes[1, 0]]:
         ax.axvline(x=15, color='gray', linestyle=':', alpha=0.7)
     
@@ -491,28 +672,53 @@ def main():
     axes[1, 0].legend(loc='upper left', fontsize=8)
     axes[1, 0].grid(True, alpha=0.3)
     
-    # Value comparison bar chart
+    # Value comparison box-and-whisker chart with explicit means.
     risk_levels = ['low', 'medium', 'high']
-    mean_values = [results[r]['terminal_values'].mean() for r in risk_levels]
-    std_values = [results[r]['terminal_values'].std() for r in risk_levels]
-    
-    x = np.arange(len(risk_levels))
-    bars = axes[1, 1].bar(x, mean_values, yerr=std_values, capsize=5,
-                          color=[colors[r] for r in risk_levels], alpha=0.7)
-    axes[1, 1].set_xticks(x)
-    axes[1, 1].set_xticklabels([r.upper() for r in risk_levels])
+    terminal_values_by_risk = [results[r]['terminal_values'] for r in risk_levels]
+    mean_values = [vals.mean() for vals in terminal_values_by_risk]
+    box = axes[1, 1].boxplot(
+        terminal_values_by_risk,
+        labels=[r.upper() for r in risk_levels],
+        patch_artist=True,
+        widths=0.6,
+    )
+    for box_patch, risk_level in zip(box["boxes"], risk_levels):
+        box_patch.set_facecolor(colors[risk_level])
+        box_patch.set_alpha(0.45)
+    x_positions = np.arange(1, len(risk_levels) + 1)
+    axes[1, 1].scatter(
+        x_positions,
+        mean_values,
+        marker='D',
+        s=36,
+        color='black',
+        label='Mean',
+        zorder=3,
+    )
+    y_min = min(vals.min() for vals in terminal_values_by_risk)
+    y_max = max(vals.max() for vals in terminal_values_by_risk)
+    y_offset = max(25.0, 0.015 * (y_max - y_min))
+    for x_pos, val in zip(x_positions, mean_values):
+        axes[1, 1].text(
+            x_pos + 0.05,
+            val + y_offset,
+            f"${val:,.0f}",
+            ha='left',
+            va='bottom',
+            fontsize=9,
+        )
     axes[1, 1].set_xlabel('Risk Level')
     axes[1, 1].set_ylabel('Terminal Harvest Value ($)')
-    axes[1, 1].set_title('Mean Terminal Value by Risk Level')
+    axes[1, 1].set_title('Terminal Value by Risk Level (Box-and-Whisker)')
     axes[1, 1].grid(True, alpha=0.3, axis='y')
-    
-    # Add value labels on bars
-    for bar, val in zip(bars, mean_values):
-        axes[1, 1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 500,
-                        f'${val:,.0f}', ha='center', va='bottom', fontsize=10)
-    
-    plt.suptitle('Stand Growth: Deterministic vs Stochastic\n(Thinning at age 15)', fontsize=14)
-    plt.tight_layout()
+
+    plt.suptitle(
+        "Stand Growth: Deterministic vs Stochastic\n"
+        f"(Thinning rule: age 15, BA > {config.auto_thin_threshold:.0f} -> "
+        f"{config.auto_thin_target:.0f}; stochastic n={n_trajectories})",
+        fontsize=14,
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
     plt.savefig("plots/mdp_deterministic_vs_stochastic.png", dpi=150)
     plt.close()
     print("Saved: plots/mdp_deterministic_vs_stochastic.png")
