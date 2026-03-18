@@ -25,7 +25,7 @@ from core.products import (
     compute_harvest_value,
     CUFT_TO_TON,
 )
-from core.stochastic_stand import StochasticPMRC, StandState
+from core.stochastic_model import StochasticPMRC, StandState
 
 
 def simulate_stochastic_growth(

@@ -13,12 +13,26 @@
 \usepackage{csquotes}
 \usepackage{amssymb}
 \usepackage{multirow}
-\usepackage[style=authoryear,backend=biber,maxcitenames=1,mincitenames=1,maxbibnames=99]{biblatex}
+\usepackage[style=authoryear,
+backend=biber,
+isbn=false,
+maxcitenames=1,
+mincitenames=1,
+maxbibnames=99
+]{biblatex}
 \addbibresource{references.bib}
 \usepackage{graphicx}
 \graphicspath{ {./figs/} }
 
+\DefineBibliographyStrings{english}{
+  in = {}
+}
 
+\DeclareFieldFormat[article,inbook,incollection,inproceedings]{pages}{#1}
+\DeclareFieldFormat{postnote}{#1}
+\DefineBibliographyStrings{english}{
+  techreport = {}
+}
 
 % DO NOT put any more \usepackage commands after \usepackage{uga}
 \usepackage{uga}
@@ -284,7 +298,7 @@ This textbook provides a comprehensive view of several major techniques for fore
 \subsection{Markov Decision Processes in Forest Modeling}
 \begin{itemize}
 \item ``Managing Forests for Carbon and Timber: A Markov Decision Model of Uneven-aged Forest Management With Risk'' \parencite{johnstonManagingForestsCarbon2017}
-\item ``A Graph-based Markov Decision Process approach for managing forests under risk of wind damage'' \parencite{forsellGraphbasedMarkovDecision2007}
+\item ``A Graph-based Markov Decision Process approach for managing forests under risk of wind damage'' \parencite{forsellGraphbasedMarkovDecision2011}
 \end{itemize}
 This paper explores the use of a MDP in a forest-level management problem subject to wind damages.
 
@@ -307,9 +321,7 @@ The simulation environment consists of three primary components: a growth module
 
 Management decisions are implemented through predefined, rule-based prescriptions rather than optimized control policies. Each prescription specifies treatment timing and intensity as a deterministic function of stand state variables. The prescriptions evaluated in this study include:
 
-\begin{enumerate}
-
-\item \textbf{Fixed Rotation (FR-T)} \\
+\textbf{Fixed Rotation (FR-T)} \\
 The stand is harvested at a predetermined rotation age $T$. No intermediate treatments are applied unless explicitly specified. We evaluate rotation ages of 25, 30, 35, and 40 years to represent a plausible range for loblolly pine plantations.
 
 \textbf{Biological Rotation (MAI Rule)} 
@@ -385,7 +397,7 @@ This design allows direct comparison between deterministic planning assumptions 
 
 For analysis of the stochastic MDP model, we compare deterministic and stochastic trajectories under a shared management rule. Unless otherwise noted, each stochastic scenario is based on $n=1000$ Monte Carlo trajectories over a 30-year planning horizon. Thinning is applied as a deterministic trigger at age 15 when basal area exceeds 150 ft$^2$/ac, targeting a residual basal area of 100 ft$^2$/ac.
 
-Increasing catastrophe frequency lowers dominant height and basal area relative to the deterministic baseline, as expected under repeated stand-reset events (Figure \ref{fig:stochastic-growth-catastrophe}). At the same time, trees per acre (TPA) may remain elevated under high-risk settings. This is explained by model mechanics verified in the trajectory diagnostics output (\texttt{data/mdp\_results/tpa\_diagnostics.csv}): severe disturbances reset stands to young replanted conditions with high initial density, while non-severe years still admit positive recruitment into the smallest size classes. The combined effect can produce higher mean TPA even when stand structure and merchantable productivity decline.
+Increasing catastrophe frequency lowers dominant height and basal area relative to the deterministic baseline, as expected under repeated stand-reset events (Figure \ref{fig:stochastic-growth-catastrophe}). At the same time, trees per acre (TPA) may remain elevated under high-risk settings. Severe disturbances reset stands to young replanted conditions with high initial density, while non-severe years still admit positive recruitment into the smallest size classes. The combined effect can produce higher mean TPA even when stand structure and merchantable productivity decline.
 
 \begin{figure}[htbp]
   \centering
@@ -419,13 +431,13 @@ Figure \ref{fig:mdp-deterministic-vs-stochastic} compares two deterministic base
 
 \chapter{Discussion}
 The central result of this study is that disturbance risk changes both expected value and the shape of the value 
-distribution. Deterministic projections provide a useful reference point, but they systematically underrepresent 
+distribution of a pine plantation managed in the southern United States. Deterministic projections of growth and yield provide a useful reference point, but they systematically underrepresent 
 downside dispersion when disturbance frequency increases. As risk increases, reductions in dominant height and basal 
 area are accompanied by lower terminal stand value and wider value dispersion, indicating that expected-value 
 comparisons alone are insufficient for management decisions in uncertain settings.
 
 The trajectory diagnostics provide additional insight into the structural mechanisms underlying this valuation gap. 
-Under increasing disturbance regimes, mean dominant height and basal area diverge substantially from the deterministic 
+Under increasing frequency of disturbances, mean dominant height and basal area diverge substantially from the deterministic 
 baseline as repeated disturbances interrupt stand development. At the same time, trees-per-acre (TPA) may remain elevated 
 under high-risk scenarios due to repeated stand resets followed by regeneration at high planting densities. This creates 
 a structural pattern in which stands maintain density but fail to accumulate merchantable volume. The resulting stand 
@@ -434,11 +446,9 @@ decline through competition and thinning.
 
 The systematic difference between deterministic and stochastic valuation arises from the asymmetric effects of disturbance on stand development. 
 Growth variability alone introduces dispersion around expected trajectories, but catastrophic disturbances impose irreversible structural resets that 
-remove accumulated merchantable volume. Because these events truncate stand development rather than merely perturbing it, the resulting value 
+damage accumulated merchantable volume. Because these events truncate stand development rather than merely perturbing it, the resulting value 
 distribution is left-skewed. Deterministic simulations implicitly assume uninterrupted growth, thereby overweighting high-value trajectories that 
-are rarely realized when disturbance risk is present.
-
-In this context, the distribution of outcomes is the relevant decision object. Monte Carlo simulation does not replace 
+are rarely realized when disturbance risk is present. In this context, the distribution of outcomes is the relevant decision object. Monte Carlo simulation does not replace 
 silvicultural judgment; it exposes the range of plausible economic outcomes under modeled uncertainty. This improves 
 transparency around downside exposure and avoids downplaying risk from a single-path forecast.
 
@@ -453,7 +463,10 @@ management actions. That choice keeps the management logic interpretable and ope
 supports direct deterministic-vs-stochastic comparisons under fixed prescriptions. In this setting, trigger rules 
 (such as explicit thinning conditions) provide an auditable bridge between simulation output and practical forestry 
 decisions. Furthermore, the vast majority of possible actions are not operationally feasible, and there is little 
-information gain from exploring the full action space. 
+information gain from exploring the full action space. This does not imply that continuous or high-dimensional action spaces are unimportant. Rather, for the present 
+objective (valuation under uncertainty), rule-based triggers offer a reduced-complexity alternative while preserving 
+explanatory power. Future work can evaluate when the additional flexibility of learned policies yields materially 
+better outcomes.
 
 From a management perspective, these results suggest that disturbance risk should influence both valuation methods and prescription selection. Under elevated 
 disturbance regimes, prescriptions designed under deterministic assumptions may implicitly rely on long uninterrupted growth periods that are unlikely to occur 
@@ -462,27 +475,22 @@ earlier in the rotation to reduce exposure to catastrophic loss. Although identi
 outside the scope of this study, the distributional valuation framework developed here provides a basis for evaluating 
 the robustness of management strategies under uncertain disturbance regimes.
 
-This does not imply that continuous or high-dimensional action spaces are unimportant. Rather, for the present 
-objective (valuation under uncertainty), rule-based triggers offer a reduced-complexity alternative while preserving 
-explanatory power. Future work can evaluate when the additional flexibility of learned policies yields materially 
-better outcomes.
-
-This could include separate models for different types of disturbances, such as fire and wind, and different 
+Future work could include separate models for different types of disturbances, such as fire and wind, and different 
 regeneration assumptions for different types of disturbances. Future work could also explore non-stationary 
 disturbance processes, such as those that are driven by climate change. Similarly, the economic assumptions of
-the model could be modeled more extensively, perhaps by incorporating timber supply modeling. \parencite{cubbageSouthernTimberMarkets}, \parencite{dasilvaAgentBasedInventoryManagement}.
+the model could be modeled more extensively, perhaps by incorporating timber supply modeling. \parencite{dasilvaAgentBasedInventoryManagement}.
 
-Relatedly, future versions should integrate and benchmark against broader ecological simulation frameworks. \parencite{pabstCalibratingTestingGap2008} 
-provide concrete directions for extending disturbance and regeneration representation beyond the current abstraction. 
-A second extension is to evaluate whether results are robust when uncertainty is embedded natively in growth-process 
+Finally, future endeavors such as these might integrate and benchmark against broader ecological simulation frameworks. \textcite{pabstCalibratingTestingGap2008} 
+provide concrete directions for extending disturbance and regeneration representation. 
+A second extension might be to evaluate whether results are robust when uncertainty is embedded natively in growth-process 
 formulations rather than layered onto deterministic projections. This approach reflects a broader trend in forestry research toward modular, high-dimensional models designed 
 to accommodate diverse management objectives, such as LANDIS-II. 
 
-\chapter{Conclusion}
+\chapter{Conclusions}
 
 By extending empirical, deterministic growth models with stochastic process noise and probabilistic disturbance 
-regimes, we create a stochastic simulator to capture the uncertainties latent in the development of pine stands. 
-This simulator is then used to evaluate the hidden cost of deterministic management policies and the importance 
+regimes, a stochastic simulator was created to capture the uncertainties latent in the development of pine stands. 
+This simulator was then used to evaluate the hidden cost of deterministic management policies and the importance 
 of accounting for uncertainty in long-horizon timber management, even in the relatively short rotation age of the 
 pine stands considered in this study. Deterministic valuation is therefore a limiting case in which transition variance is 
 suppressed.
@@ -492,7 +500,7 @@ stochastic transitions, particularly in moderate-to-high disturbance regimes. Th
 downside effects: disturbances impose irreversible growth losses that are not offset by comparable gains. As 
 uncertainty increases, the expected net present value declines and the variance of outcomes expands. In the highest 
 risk regime examined, repeated catastrophic disturbances can drive expected value negative under the assumed 
-discount structure. The central finding is not only that expected value changes, but that the distribution of 
+discount structure. The central findings are not only that expected value changes, but also that the distribution of 
 outcomes widens and tail risk becomes economically meaningful.
 
 Within the stochastic MDP framework, disturbance risk enters directly into the Bellman recursion by altering transition 

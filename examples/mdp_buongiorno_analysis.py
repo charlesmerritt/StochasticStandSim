@@ -28,7 +28,7 @@ from core.mdp import (
     solve_mdp_for_risk_level,
 )
 from core.pmrc_model import PMRCModel
-from core.stochastic_stand import StandState, thin_to_residual_ba_smallest_first
+from core.stochastic_model import StandState, thin_to_residual_ba_smallest_first
 
 
 def print_mdp_assumptions(config: BuongiornoConfig) -> None:

@@ -18,7 +18,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
 
 from core.pmrc_model import PMRCModel
-from core.stochastic_stand import (
+from core.stochastic_model import (
     StochasticPMRC,
     StandState,
     StateDiscretizer,

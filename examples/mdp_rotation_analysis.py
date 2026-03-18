@@ -24,7 +24,7 @@ from core.config import get_risk_profile
 from core.mdp_solver import finite_horizon_value_iteration, value_iteration
 from core.pmrc_model import PMRCModel
 from core.products import compute_harvest_value, estimate_product_distribution
-from core.stochastic_stand import (
+from core.stochastic_model import (
     StateDiscretizer,
     StandState,
     StochasticPMRC,

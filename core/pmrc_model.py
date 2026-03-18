@@ -8,6 +8,10 @@ import numpy as np
 Region = Literal["ucp", "pucp", "lcp"]
 Percentile = Literal[0, 25, 50, 95]
 
+# Default DBH class bounds for thinning (inches)
+# Sub-merchantable: 0-6", Pulpwood: 6-9", CNS: 9-12", Sawtimber: 12-24"
+DEFAULT_DBH_BOUNDS = np.array([0.0, 6.0, 9.0, 12.0, 24.0])
+
 
 @dataclass
 class WeibullParams:
@@ -16,6 +20,39 @@ class WeibullParams:
     a: float  # location
     b: float  # scale
     c: float  # shape
+
+
+@dataclass
+class SizeClassDistribution:
+    """Diameter class counts derived from a Weibull representation.
+    
+    This is the canonical size class distribution using PMRC tech report
+    coefficients for Weibull parameter estimation.
+    """
+
+    dbh_bounds: np.ndarray
+    tpa_per_class: np.ndarray
+    ba_per_class: np.ndarray
+    weibull_params: WeibullParams | None = None
+    percentiles: Dict[Percentile, float] | None = None
+
+    def validate(self) -> None:
+        if self.dbh_bounds.ndim != 1 or self.dbh_bounds.size < 2:
+            raise ValueError("dbh_bounds must be 1D with length >= 2.")
+        if np.any(np.diff(self.dbh_bounds) <= 0):
+            raise ValueError("dbh_bounds must be strictly increasing.")
+        if np.any(self.tpa_per_class < 0.0) or np.any(self.ba_per_class < 0.0):
+            raise ValueError("Class values must be non-negative.")
+        if self.tpa_per_class.shape != self.ba_per_class.shape:
+            raise ValueError("TPA and BA arrays must have matching shapes.")
+    
+    @property
+    def total_tpa(self) -> float:
+        return float(np.sum(self.tpa_per_class))
+    
+    @property
+    def total_ba(self) -> float:
+        return float(np.sum(self.ba_per_class))
 
 class PMRCModel:
     """
@@ -360,16 +397,112 @@ class PMRCModel:
         *,
         ba: float,
         tpa: float,
-        dbh_bounds: Sequence[float],
+        dbh_bounds: Sequence[float] | None = None,
         region: Region | None = None,
         phwd: float = 0.0,
-    ) -> Tuple[Dict[Percentile, float], WeibullParams, List[float], List[float]]:
+        scale_ba: bool = True,
+    ) -> SizeClassDistribution:
         """
-        Convenience helper to derive Weibull-driven size classes from BA/TPA.
+        Build a size class distribution from BA/TPA using PMRC Weibull coefficients.
+        
+        This is the canonical method for deriving diameter distributions. It:
+        1. Predicts diameter percentiles using PMRC regression coefficients
+        2. Fits a 3-parameter Weibull to those percentiles
+        3. Allocates TPA across size classes based on Weibull CDF
+        4. Optionally scales BA to match input (Weibull midpoint approx may not sum exactly)
+        
+        Args:
+            ba: Basal area (ft²/ac)
+            tpa: Trees per acre
+            dbh_bounds: DBH class boundaries (inches). Defaults to DEFAULT_DBH_BOUNDS.
+            region: PMRC region for coefficient lookup
+            phwd: Percent hardwood (0-100)
+            scale_ba: If True, scale BA array to match input ba
+        
+        Returns:
+            SizeClassDistribution with TPA and BA per class
         """
-        region_key = (region or self.region).lower()
+        if dbh_bounds is None:
+            dbh_bounds = DEFAULT_DBH_BOUNDS
+        
+        region_key: Region = (region or self.region).lower()  # type: ignore[assignment]
         percentiles = self.predict_diameter_percentiles(ba, tpa, region_key, phwd)
         params = self.fit_weibull_from_percentiles(percentiles)
         trees, basals = self.size_class_distribution_from_weibull(params, tpa, dbh_bounds)
-        return percentiles, params, trees, basals
+        
+        tpa_arr = np.asarray(trees, dtype=float)
+        ba_arr = np.asarray(basals, dtype=float)
+        
+        # Scale BA to match actual stand BA (Weibull midpoint approximation may not sum exactly)
+        if scale_ba:
+            ba_sum = np.sum(ba_arr)
+            if ba_sum > 0:
+                ba_arr = ba_arr * (ba / ba_sum)
+        
+        dist = SizeClassDistribution(
+            dbh_bounds=np.asarray(dbh_bounds, dtype=float),
+            tpa_per_class=tpa_arr,
+            ba_per_class=ba_arr,
+            weibull_params=params,
+            percentiles=percentiles,
+        )
+        dist.validate()
+        return dist
 
+
+def thin_smallest_first(
+    dist: SizeClassDistribution,
+    target_ba_removal: float,
+) -> SizeClassDistribution:
+    """Remove trees from smallest diameter classes first until target BA removal is met.
+    
+    This implements "low thinning" or "thinning from below" where the smallest
+    trees are removed first to reduce competition and favor larger crop trees.
+    
+    Args:
+        dist: Current size class distribution
+        target_ba_removal: BA to remove (ft²/ac)
+    
+    Returns:
+        New SizeClassDistribution after thinning
+    
+    Note:
+        The approximation assumes uniform removal within each class. Trees are
+        removed from the smallest class first, then the next smallest, etc.
+        until the target BA removal is achieved.
+    """
+    if target_ba_removal <= 0:
+        return dist
+    
+    tpa_new = dist.tpa_per_class.copy()
+    ba_new = dist.ba_per_class.copy()
+    ba_remaining = target_ba_removal
+    
+    # Remove from smallest classes first (index 0 is smallest)
+    for i in range(len(ba_new)):
+        if ba_remaining <= 0:
+            break
+        
+        class_ba = ba_new[i]
+        if class_ba <= 0:
+            continue
+        
+        if class_ba <= ba_remaining:
+            # Remove entire class
+            ba_remaining -= class_ba
+            tpa_new[i] = 0.0
+            ba_new[i] = 0.0
+        else:
+            # Partial removal from this class
+            fraction_to_remove = ba_remaining / class_ba
+            tpa_new[i] *= (1.0 - fraction_to_remove)
+            ba_new[i] *= (1.0 - fraction_to_remove)
+            ba_remaining = 0.0
+    
+    return SizeClassDistribution(
+        dbh_bounds=dist.dbh_bounds.copy(),
+        tpa_per_class=tpa_new,
+        ba_per_class=ba_new,
+        weibull_params=dist.weibull_params,
+        percentiles=dist.percentiles,
+    )
