@@ -107,7 +107,7 @@ def estimate_product_distribution(
     
     # Get diameter distribution
     try:
-        percentiles, weibull_params, trees_by_class, ba_by_class = pmrc.diameter_class_distribution(
+        dist = pmrc.diameter_class_distribution(
             ba=ba,
             tpa=tpa,
             dbh_bounds=dbh_bounds,
@@ -122,10 +122,9 @@ def estimate_product_distribution(
             vol_pulp=0, vol_cns=0, vol_saw=0,
         )
     
-    # trees_by_class: [sub-merch, pulp, cns, saw]
-    # ba_by_class: [sub-merch, pulp, cns, saw]
-    tpa_submerch, tpa_pulp, tpa_cns, tpa_saw = trees_by_class
-    ba_submerch, ba_pulp, ba_cns, ba_saw = ba_by_class
+    # dist arrays: [sub-merch, pulp, cns, saw]
+    tpa_submerch, tpa_pulp, tpa_cns, tpa_saw = dist.tpa_per_class
+    ba_submerch, ba_pulp, ba_cns, ba_saw = dist.ba_per_class
     
     # Get total merchantable BA (excluding sub-merchantable)
     ba_merch = ba_pulp + ba_cns + ba_saw

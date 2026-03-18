@@ -10,6 +10,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "dataclasses>=0.8",
     "ruff>=0.14.14",
+    "pytest>=9.0.2",
 ]
 
 [dependency-groups]
@@ -35,6 +36,9 @@ ignore = [
     "E203",  # whitespace before ':'
     "E501",  # line length (Black handles this)
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
 
 [tool.black]
 line-length = 88

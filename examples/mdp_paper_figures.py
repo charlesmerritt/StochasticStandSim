@@ -32,7 +32,7 @@ from core.mdp import (
     value_iteration,
 )
 from core.pmrc_model import PMRCModel
-from core.stochastic_stand import StandState, StochasticPMRC
+from core.stochastic_model import StandState, StochasticPMRC
 
 
 def plot_transition_matrix(save_path: str = "plots/mdp_transition_matrix.png") -> None:
@@ -320,7 +320,7 @@ def plot_sample_trajectories(save_path: str = "plots/mdp_sample_trajectories.png
             for year in range(1, n_years + 1):
                 # Deterministic thinning at age 15 if BA > threshold
                 if year == 15 and state.ba > config.auto_thin_threshold and not thinned:
-                    from core.stochastic_stand import thin_to_residual_ba_smallest_first
+                    from core.stochastic_model import thin_to_residual_ba_smallest_first
                     state, _ = thin_to_residual_ba_smallest_first(state, config.auto_thin_target)
                     thinned = True
                 

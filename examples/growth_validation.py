@@ -21,7 +21,7 @@ import numpy as np
 from core.config import get_risk_profile
 from core.mdp import BuongiornoConfig
 from core.pmrc_model import PMRCModel
-from core.stochastic_stand import StandState, StochasticPMRC, thin_to_residual_ba_smallest_first
+from core.stochastic_model import StandState, StochasticPMRC, thin_to_residual_ba_smallest_first
 
 
 def run_growth_validation(
