@@ -1,0 +1,109 @@
+# Experiments Configuration
+# Named scenarios and run settings for reproducible experiments
+
+# =============================================================================
+# Default Run Settings
+# =============================================================================
+defaults:
+  n_trajectories: 1000
+  rotation_length: 35
+  initial_conditions:
+    age0: 5.0
+    tpa0: 850
+    si25: 80.0
+    region: "ucp"
+  thinning:
+    trigger_age: 15
+    ba_threshold: 150
+    residual_ba: 100
+  economics:
+    discount_rate: 0.05
+    prices:
+      pulpwood: 9.51
+      chip_n_saw: 23.51
+      sawtimber: 27.82
+    costs:
+      logging: 150.00
+      replanting: 150.80
+      thinning: 87.34
+
+# =============================================================================
+# Scenario Matrix (4x4 = 16 scenarios)
+# =============================================================================
+scenario_matrix:
+  lambda_proc_levels: [0.0, 0.25, 0.5, 1.0]
+  p_dist_levels: [0.0, 0.0333, 0.05, 0.10]  # 0, 1/30, 1/20, 1/10
+  severity_mean: 0.30
+  severity_kappa: 12.0
+
+# =============================================================================
+# Named Experiments
+# =============================================================================
+experiments:
+  baseline_validation:
+    description: "Validate deterministic PMRC baseline"
+    scenarios: [deterministic]
+    n_trajectories: 1
+    seed: 42
+    
+  zero_noise_recovery:
+    description: "Verify stochastic reduces to deterministic when noise=0"
+    scenarios: [deterministic]
+    compare_with:
+      scenario_type: stochastic
+      lambda_proc: 0.0
+      p_dist: 0.0
+    n_trajectories: 10
+    seed: 42
+    
+  noise_sensitivity:
+    description: "Isolate effect of process noise"
+    scenarios: [deterministic, noise_025, noise_050, noise_100]
+    n_trajectories: 1000
+    seed: 42
+    
+  disturbance_sensitivity:
+    description: "Isolate effect of disturbance frequency"
+    scenarios: [deterministic, dist_30, dist_20, dist_10]
+    n_trajectories: 1000
+    seed: 42
+    
+  full_matrix:
+    description: "Complete 4x4 sensitivity analysis"
+    scenarios: all
+    n_trajectories: 1000
+    seed: 42
+    
+  high_resolution:
+    description: "High-resolution run for publication figures"
+    scenarios: all
+    n_trajectories: 10000
+    seed: 42
+
+# =============================================================================
+# Validation Runs
+# =============================================================================
+validation_runs:
+  feasibility_check:
+    description: "Verify feasibility constraints hold"
+    scenarios: [n100_d10]  # Most extreme scenario
+    n_trajectories: 100
+    checks:
+      - tpa_ge_100
+      - ba_ge_0
+      - hd_non_decreasing
+      - no_nans
+      
+  disturbance_frequency:
+    description: "Verify empirical disturbance rate matches p_dist"
+    p_dist: 0.05
+    n_runs: 1000
+    n_years: 30
+    tolerance: 0.20
+    
+  severity_distribution:
+    description: "Verify severity draws match Beta parameters"
+    severity_mean: 0.30
+    severity_kappa: 12.0
+    n_samples: 10000
+    tolerance: 0.05

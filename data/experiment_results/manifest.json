@@ -1,0 +1,684 @@
+{
+  "generated_at": "2026-03-18T05:29:00.261028",
+  "seed": 42,
+  "n_trajectories": 1000,
+  "scenario_names": [
+    "deterministic",
+    "dist_30",
+    "dist_20",
+    "dist_10",
+    "noise_025",
+    "n025_d30",
+    "n025_d20",
+    "n025_d10",
+    "noise_050",
+    "n050_d30",
+    "n050_d20",
+    "n050_d10",
+    "noise_100",
+    "n100_d30",
+    "n100_d20",
+    "n100_d10"
+  ],
+  "scenarios": [
+    {
+      "name": "deterministic",
+      "scenario_type": "deterministic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": null,
+      "disturbance_params": null,
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "dist_30",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.0
+      },
+      "disturbance_params": {
+        "p_dist": 0.03333333333333333,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "dist_20",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.0
+      },
+      "disturbance_params": {
+        "p_dist": 0.05,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "dist_10",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.0
+      },
+      "disturbance_params": {
+        "p_dist": 0.1,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "noise_025",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.25
+      },
+      "disturbance_params": {
+        "p_dist": 0.0,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n025_d30",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.25
+      },
+      "disturbance_params": {
+        "p_dist": 0.03333333333333333,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n025_d20",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.25
+      },
+      "disturbance_params": {
+        "p_dist": 0.05,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n025_d10",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.25
+      },
+      "disturbance_params": {
+        "p_dist": 0.1,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "noise_050",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.5
+      },
+      "disturbance_params": {
+        "p_dist": 0.0,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n050_d30",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.5
+      },
+      "disturbance_params": {
+        "p_dist": 0.03333333333333333,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n050_d20",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.5
+      },
+      "disturbance_params": {
+        "p_dist": 0.05,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n050_d10",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 0.5
+      },
+      "disturbance_params": {
+        "p_dist": 0.1,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "noise_100",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 1.0
+      },
+      "disturbance_params": {
+        "p_dist": 0.0,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n100_d30",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 1.0
+      },
+      "disturbance_params": {
+        "p_dist": 0.03333333333333333,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n100_d20",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 1.0
+      },
+      "disturbance_params": {
+        "p_dist": 0.05,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    },
+    {
+      "name": "n100_d10",
+      "scenario_type": "stochastic",
+      "age0": 5.0,
+      "tpa0": 850.0,
+      "si25": 80.0,
+      "region": "ucp",
+      "rotation_length": 35,
+      "thin_params": {
+        "trigger_age": 15.0,
+        "ba_threshold": 150.0,
+        "residual_ba": 100.0,
+        "thin_cost": 87.34
+      },
+      "noise_params": {
+        "sigma_log_ba": 0.14,
+        "sigma_log_hd": null,
+        "sigma_tpa": 30.0,
+        "use_binomial_tpa": true,
+        "lambda_proc": 1.0
+      },
+      "disturbance_params": {
+        "p_dist": 0.1,
+        "severity_mean": 0.3,
+        "severity_kappa": 12.0,
+        "c_tpa": 1.0,
+        "c_ba": 1.0,
+        "c_hd": 0.0
+      },
+      "discount_rate": 0.05,
+      "prices": {
+        "pulpwood": 9.51,
+        "chip_n_saw": 23.51,
+        "sawtimber": 27.82
+      },
+      "costs": {
+        "logging": 150.0,
+        "replanting": 150.8
+      },
+      "n_trajectories": 1000,
+      "seed": null
+    }
+  ]
+}
