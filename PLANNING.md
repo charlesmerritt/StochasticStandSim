@@ -179,6 +179,24 @@ TPA naturally decreases (mortality), so handle it separately (see below).
 
 Volume and products are **derived** from atomics and should be recomputed after stochastic updates, not perturbed directly.
 
+### 4.2.1 Recruitment (Extension)
+
+In addition to process noise on growth increments, the model includes stochastic recruitment of new trees to the smallest diameter class. This is modeled as:
+
+\[
+R_t \sim \text{Poisson}(\lambda_R)
+\]
+
+where the recruitment rate is:
+
+\[
+\lambda_R = \max(0, \alpha_0 + \alpha_1 \cdot BA + \alpha_2 \cdot SI25)
+\]
+
+Default coefficients: α₀ = 1.0, α₁ = -0.005, α₂ = 0.02.
+
+Recruitment is **disabled when λ_proc = 0** to ensure zero-noise recovery (stochastic model reduces exactly to deterministic PMRC).
+
 ---
 
 ## 4.3 Disturbance occurrence
@@ -236,15 +254,13 @@ Then:
 * higher (\kappa) means less variability around the mean
 * lower (\kappa) means more variable severity
 
-A sensible Phase 1 choice is to define several severity regimes:
+A sensible Phase 1 choice is to fix a single moderate-severity regime:
 
-* mild: (m_q = 0.15)
-* moderate: (m_q = 0.30)
-* severe: (m_q = 0.50)
+* (m_q = 0.30)
+* (\kappa = 12)
 
-and fix (\kappa) around 10 or 20.
-
-This is simple and defensible.
+This is simple and defensible for Phase 1, but it is also arbitrary.
+If disturbance data become available, these severity parameters should be estimated or calibrated rather than fixed by judgment.
 
 ---
 
@@ -378,15 +394,13 @@ This is interpretable and easy to explain.
 
 ## 5.3 Disturbance severity parameters
 
-Choose a Beta severity family, for example:
+For Phase 1, use a single Beta severity family:
 
-* mild: mean (0.15)
-* moderate: mean (0.30)
-* severe: mean (0.50)
+* mean severity (m_q = 0.30)
+* concentration (\kappa = 12)
 
-with concentration (\kappa = 12) or (20).
-
-If you want one global disturbance-intensity slider, let it control the severity mean separately from frequency.
+This moderate regime is an arbitrary scenario choice.
+The better long-run approach would be to estimate or calibrate these severity parameters from disturbance data.
 
 ## 5.4 Sensitivity coefficients (for disturbance shocks)
 
@@ -422,8 +436,6 @@ That means you vary:
 
 * (\sigma_x)
 * disturbance return interval (n)
-* severity mean (m_q)
-* severity concentration (\kappa)
 
 and see how outputs change.
 
@@ -560,9 +572,7 @@ Define a small grid:
 
 ### Disturbance severity
 
-* mild
-* moderate
-* severe
+* fixed moderate regime with (m_q = 0.30) and (\kappa = 12)
 
 Do not explode the grid at first. Start with 6 to 12 carefully chosen scenarios.
 
@@ -822,22 +832,23 @@ If policy is threshold-based, stochasticity may change whether thresholds are cr
 
 # 12. Python model skeleton
 
-Here is a clean module layout.
+Here is the current module layout.
 
 ```text
-forest_sim/
-    state.py
-    policy.py
-    pmrc.py
-    stochastic.py
-    disturbance.py
-    projection.py
-    valuation.py
-    simulate.py
-    scenarios.py
-    metrics.py
-    viz.py
-    tests/
+core/
+    state.py           # StandState dataclass, HD/SI25 conversion functions
+    config.py          # ScenarioConfig dataclass (pure configuration)
+    pmrc_model.py      # PMRC growth equations, Weibull distribution
+    stochastic_model.py # StochasticPMRC with noise and disturbances
+    disturbances.py    # DisturbanceModel, DisturbanceParams
+    process_noise.py   # ProcessNoiseModel, NoiseParams
+    actions.py         # ActionModel, ThinningParams (policy implementation)
+    products.py        # ProductDistribution, prices, costs
+    simulate.py        # run_scenario() execution logic
+    scenarios.py       # Pre-defined scenario configs (BASELINE, HIGH_RISK, etc.)
+tests/
+docs/
+    scenario_defaults.md  # Default parameter documentation
 ```
 
 ## state.py
@@ -1021,33 +1032,8 @@ Repeat over many Monte Carlo runs.
 
 ---
 
-# 14. A practical first scenario set
-
-Do not start with too many scenarios.
-
-I would begin with these six:
-
-1. deterministic baseline
-   (\lambda_{\text{proc}}=0,; p_{\text{dist}}=0)
-
-2. low process noise only
-   (\lambda_{\text{proc}}=0.25,; p_{\text{dist}}=0)
-
-3. medium process noise only
-   (\lambda_{\text{proc}}=0.5,; p_{\text{dist}}=0)
-
-4. disturbance only, mild
-   (\lambda_{\text{proc}}=0,; p_{\text{dist}}=1/30,; m_q=0.15)
-
-5. disturbance only, moderate
-   (\lambda_{\text{proc}}=0,; p_{\text{dist}}=1/20,; m_q=0.30)
-
-6. combined
-   (\lambda_{\text{proc}}=0.5,; p_{\text{dist}}=1/20,; m_q=0.30)
-
-Then expand later.
-
----
+# 14. Fixing the Severity Sensitivity makes scenario enumeration tractable
+4x4=16 scenarios for full scenario space exploration.
 
 # 15. What not to do yet
 
