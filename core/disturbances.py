@@ -1,26 +1,31 @@
 """Disturbance modeling for stochastic forest simulation.
 
-This module handles aleatoric uncertainty from catastrophic events:
-- Disturbance occurrence (Bernoulli draws)
-- Severity sampling (Beta distribution)
-- State variable shocks (TPA, BA, HD reductions)
+This module handles aleatoric uncertainty from catastrophic events per PLANNING.md
+Sections 4.3-4.5:
+
+- **Occurrence**: Annual Bernoulli trial with probability p_dist = 1/n, where n is
+  the mean return interval in years (e.g., n=20 → 5% annual probability).
+
+- **Severity**: Conditional on occurrence, severity q ~ Beta(α, β) where:
+    α = m_q * κ
+    β = (1 - m_q) * κ
+  m_q is the mean severity (default 0.30) and κ is concentration (default 12).
+
+- **Shock**: One-time proportional reduction to atomic state variables:
+    x_post = x_pre * (1 - c_x * q)
+  where c_x is the sensitivity coefficient for variable x.
+
+This is a single generic disturbance type. Frequency varies by scenario (p_dist),
+but severity is always drawn from the same Beta distribution.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 
 import numpy as np
 
 from core.state import StandState
-
-
-class DisturbanceType(Enum):
-    """Classification of disturbance events."""
-    NONE = "none"
-    MILD = "mild"
-    SEVERE = "severe"
 
 
 @dataclass
@@ -28,15 +33,13 @@ class DisturbanceEvent:
     """Record of a disturbance occurrence and its effects.
     
     Attributes:
-        occurred: Whether any disturbance occurred this period
-        dtype: Type of disturbance (none, mild, severe)
-        severity: Severity draw from Beta distribution (0-1 scale)
+        occurred: Whether a disturbance occurred this period
+        severity: Severity draw from Beta distribution (0-1 scale), 0 if no disturbance
         tpa_loss: Absolute TPA reduction
         ba_loss: Absolute BA reduction
         hd_loss: Absolute HD reduction
     """
     occurred: bool
-    dtype: DisturbanceType
     severity: float = 0.0
     tpa_loss: float = 0.0
     ba_loss: float = 0.0
@@ -47,101 +50,77 @@ class DisturbanceEvent:
 class DisturbanceParams:
     """Parameters controlling disturbance occurrence and severity.
     
-    Aleatoric uncertainty parameters for catastrophic events.
+    Implements the disturbance model from PLANNING.md Sections 4.3-4.5:
+    - Bernoulli occurrence with probability p_dist
+    - Beta severity with mean m_q and concentration kappa
+    - Proportional shocks to atomic variables with sensitivity coefficients
     
     Attributes:
-        p_mild: Annual probability of mild disturbance
-        severe_mean_interval: Mean return interval for severe events (years)
-        mild_tpa_multiplier: TPA retention fraction after mild event (e.g., 0.8 = 20% loss)
-        severe_tpa_multiplier: TPA retention fraction after severe event
-        mild_hd_multiplier: HD retention fraction after mild event
-        severe_hd_multiplier: HD retention fraction after severe event
-        severe_reset_age: Age multiplier after severe event (partial stand reset)
-        severe_reset_tpa: TPA to reset to after severe event
+        p_dist: Annual probability of disturbance (default 0 = no disturbances).
+                Use 1/n for n-year mean return interval (e.g., 1/20 = 0.05).
+        severity_mean: Mean of Beta severity distribution (m_q, default 0.30). Fixed to a moderate disturbance regime for now. "Disturbances are 30% severe on average"
+        severity_kappa: Concentration of Beta distribution (κ, default 12).
+                        Higher κ = less variability around the mean.
         c_tpa: Sensitivity coefficient for TPA shock (default 1.0)
         c_ba: Sensitivity coefficient for BA shock (default 1.0)
         c_hd: Sensitivity coefficient for HD shock (default 0.0, height typically unaffected)
     """
-    p_mild: float = 0.02
-    severe_mean_interval: float = 25.0
-    mild_tpa_multiplier: float = 0.8
-    severe_tpa_multiplier: float = 0.4
-    mild_hd_multiplier: float = 0.95
-    severe_hd_multiplier: float = 0.8
-    severe_reset_age: float = 0.5
-    severe_reset_tpa: float = 700.0
+    p_dist: float = 0.0
+    severity_mean: float = 0.30
+    severity_kappa: float = 12.0
     c_tpa: float = 1.0
     c_ba: float = 1.0
     c_hd: float = 0.0
-
-    @property
-    def p_severe(self) -> float:
-        """Annual probability of severe disturbance."""
-        return 1.0 / self.severe_mean_interval if self.severe_mean_interval > 0 else 0.0
 
 
 class DisturbanceModel:
     """Samples and applies disturbance shocks to stand state.
     
     Implements the aleatoric uncertainty from catastrophic events as described
-    in PLANNING.md Section 4.3-4.5:
-    - Bernoulli occurrence draws
-    - Beta severity sampling
+    in PLANNING.md Sections 4.3-4.5:
+    - Bernoulli occurrence with probability p_dist
+    - Beta severity sampling with mean m_q and concentration κ
     - Proportional shocks to atomic state variables only
     """
 
     def __init__(self, params: DisturbanceParams | None = None) -> None:
         self.params: DisturbanceParams = params or DisturbanceParams()
 
-    def sample_occurrence(self, rng: np.random.Generator) -> DisturbanceType:
+    def sample_occurrence(self, rng: np.random.Generator) -> bool:
         """Sample whether a disturbance occurs this period.
+        
+        Bernoulli trial with probability p_dist.
         
         Args:
             rng: NumPy random generator
             
         Returns:
-            DisturbanceType indicating none, mild, or severe
+            True if disturbance occurs, False otherwise
         """
-        u = rng.random()
-        if u < self.params.p_severe:
-            return DisturbanceType.SEVERE
-        elif u < self.params.p_severe + self.params.p_mild:
-            return DisturbanceType.MILD
-        return DisturbanceType.NONE
+        if self.params.p_dist <= 0:
+            return False
+        return rng.random() < self.params.p_dist
 
-    def sample_severity(
-        self,
-        dtype: DisturbanceType,
-        rng: np.random.Generator,
-    ) -> float:
-        """Sample severity conditional on disturbance type.
+    def sample_severity(self, rng: np.random.Generator) -> float:
+        """Sample severity from Beta distribution.
         
-        For mild events, severity is drawn from a Beta distribution centered
-        around (1 - mild_multiplier). For severe events, centered around
-        (1 - severe_multiplier).
+        Severity q ~ Beta(α, β) where:
+            α = m_q * κ
+            β = (1 - m_q) * κ
         
         Args:
-            dtype: Type of disturbance
             rng: NumPy random generator
             
         Returns:
             Severity in [0, 1] where 0 = no damage, 1 = total loss
         """
-        if dtype == DisturbanceType.NONE:
-            return 0.0
+        m_q = self.params.severity_mean
+        kappa = self.params.severity_kappa
         
-        if dtype == DisturbanceType.MILD:
-            # Mean severity around 1 - mild_multiplier (e.g., 0.2 for 80% retention)
-            mean_sev = 1.0 - self.params.mild_tpa_multiplier
-        else:  # SEVERE
-            mean_sev = 1.0 - self.params.severe_tpa_multiplier
+        alpha = m_q * kappa
+        beta = (1.0 - m_q) * kappa
         
-        # Use Beta distribution with concentration kappa=12
-        kappa = 12.0
-        alpha = mean_sev * kappa
-        beta = (1.0 - mean_sev) * kappa
-        
-        # Ensure valid parameters
+        # Ensure valid parameters (alpha, beta > 0)
         alpha = max(0.1, alpha)
         beta = max(0.1, beta)
         
@@ -150,7 +129,6 @@ class DisturbanceModel:
     def apply_shock(
         self,
         state: StandState,
-        dtype: DisturbanceType,
         severity: float,
     ) -> tuple[StandState, DisturbanceEvent]:
         """Apply disturbance shock to atomic state variables.
@@ -163,17 +141,13 @@ class DisturbanceModel:
         
         Args:
             state: Current stand state (will not be mutated)
-            dtype: Type of disturbance
             severity: Severity draw in [0, 1]
             
         Returns:
             Tuple of (new_state, event_record)
         """
-        if dtype == DisturbanceType.NONE or severity <= 0:
-            return state, DisturbanceEvent(
-                occurred=False,
-                dtype=DisturbanceType.NONE,
-            )
+        if severity <= 0:
+            return state, DisturbanceEvent(occurred=False)
         
         # Calculate losses using sensitivity coefficients
         tpa_loss = state.tpa * self.params.c_tpa * severity
@@ -185,16 +159,8 @@ class DisturbanceModel:
         new_ba = max(0.0, state.ba - ba_loss)
         new_hd = max(1.0, state.hd - hd_loss)  # Height shouldn't go below 1 ft
         
-        # For severe events, optionally reset age and TPA
-        new_age = state.age
-        if dtype == DisturbanceType.SEVERE:
-            new_age = max(1.0, state.age * self.params.severe_reset_age)
-            # Optionally cap TPA at reset value for severe events
-            if self.params.severe_reset_tpa > 0:
-                new_tpa = min(new_tpa, self.params.severe_reset_tpa)
-        
         new_state = StandState(
-            age=new_age,
+            age=state.age,  # Age unchanged by disturbance
             hd=new_hd,
             tpa=new_tpa,
             ba=new_ba,
@@ -205,7 +171,6 @@ class DisturbanceModel:
         
         event = DisturbanceEvent(
             occurred=True,
-            dtype=dtype,
             severity=severity,
             tpa_loss=tpa_loss,
             ba_loss=ba_loss,
@@ -230,6 +195,8 @@ class DisturbanceModel:
         Returns:
             Tuple of (new_state, event_record)
         """
-        dtype = self.sample_occurrence(rng)
-        severity = self.sample_severity(dtype, rng)
-        return self.apply_shock(state, dtype, severity)
+        if not self.sample_occurrence(rng):
+            return state, DisturbanceEvent(occurred=False)
+        
+        severity = self.sample_severity(rng)
+        return self.apply_shock(state, severity)
