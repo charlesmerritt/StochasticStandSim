@@ -1,12 +1,8 @@
-"""Product distribution based on DBH classes.
+"""Product distribution and valuation helpers.
 
-Implements forestry-standard product classification:
-- Pulpwood: 6" - 9" DBH
-- Chip-n-Saw: 9" - 12" DBH  
-- Sawtimber: 12"+ DBH
-
-Uses Weibull diameter distribution from PMRC model to estimate
-product volumes and values at any stand state.
+Product volumes now come from the PMRC merchantability equations in
+``PMRCModel.product_yields()``. Weibull diameter classes are retained only
+for optional TPA/BA-by-class summaries and thinning structure logic.
 """
 
 from __future__ import annotations
@@ -37,7 +33,7 @@ class ProductDistribution:
     ba_cns: float
     ba_saw: float
     
-    # Volume (cuft/acre) in each class - estimated from BA
+    # Volume (cuft/acre) in each class from PMRC merchantability equations
     vol_pulp: float
     vol_cns: float
     vol_saw: float
@@ -75,16 +71,22 @@ class ProductDistribution:
 
 def estimate_product_distribution(
     pmrc: PMRCModel,
+    age: float,
     ba: float,
     tpa: float,
     hd: float,
     region: Region = "ucp",
     phwd: float = 0.0,
 ) -> ProductDistribution:
-    """Estimate product distribution from stand state using Weibull DBH distribution.
+    """Estimate product distribution from stand state.
+
+    Product volumes are computed from PMRC merchantability equations.
+    Optional class-level TPA/BA summaries are still derived from the Weibull
+    approximation when it is available.
     
     Args:
         pmrc: PMRC model instance
+        age: Stand age (years)
         ba: Basal area (ft²/acre)
         tpa: Trees per acre
         hd: Dominant height (ft)
@@ -94,18 +96,27 @@ def estimate_product_distribution(
     Returns:
         ProductDistribution with TPA, BA, and volume by product class
     """
-    if ba <= 0 or tpa <= 0:
+    if age <= 0 or ba <= 0 or tpa <= 0 or hd <= 0:
         return ProductDistribution(
             tpa_pulp=0, tpa_cns=0, tpa_saw=0,
             ba_pulp=0, ba_cns=0, ba_saw=0,
             vol_pulp=0, vol_cns=0, vol_saw=0,
         )
-    
-    # Define DBH class boundaries
-    # Sub-merchantable: 0-6", Pulpwood: 6-9", CNS: 9-12", Sawtimber: 12-30"
+
+    # PMRC merchantability equations are the canonical product-volume source.
+    pmrc_yields = pmrc.product_yields(
+        age=age,
+        tpa=tpa,
+        hd=hd,
+        ba=ba,
+        unit="TVOB",
+        region=region,
+    )
+
+    # Keep the Weibull pathway only for optional diameter-structure summaries.
     dbh_bounds = [0.0, DBH_PULP_MIN, DBH_CNS_MIN, DBH_SAW_MIN, DBH_MAX]
-    
-    # Get diameter distribution
+    tpa_pulp = tpa_cns = tpa_saw = 0.0
+    ba_pulp = ba_cns = ba_saw = 0.0
     try:
         dist = pmrc.diameter_class_distribution(
             ba=ba,
@@ -114,55 +125,21 @@ def estimate_product_distribution(
             region=region,
             phwd=phwd,
         )
+        _, tpa_pulp, tpa_cns, tpa_saw = dist.tpa_per_class
+        _, ba_pulp, ba_cns, ba_saw = dist.ba_per_class
     except (ValueError, RuntimeError):
-        # Fallback if Weibull fit fails
-        return ProductDistribution(
-            tpa_pulp=0, tpa_cns=0, tpa_saw=0,
-            ba_pulp=0, ba_cns=0, ba_saw=0,
-            vol_pulp=0, vol_cns=0, vol_saw=0,
-        )
-    
-    # dist arrays: [sub-merch, pulp, cns, saw]
-    tpa_submerch, tpa_pulp, tpa_cns, tpa_saw = dist.tpa_per_class
-    ba_submerch, ba_pulp, ba_cns, ba_saw = dist.ba_per_class
-    
-    # Get total merchantable BA (excluding sub-merchantable)
-    ba_merch = ba_pulp + ba_cns + ba_saw
-    
-    # Use PMRC TVOB for total volume, then distribute by BA fraction
-    # This ensures total volume matches the PMRC model
-    # Simplified volume equation calibrated to PMRC TVOB output:
-    # At age 40: BA=165.9, HD=81.3, TVOB=5259 -> factor = 0.39
-    tvob_total = ba * hd * 0.39
-    
-    # Distribute volume by BA fraction, with form factor adjustment
-    # Larger trees have higher volume per BA due to better form
-    if ba_merch > 0:
-        # Weight by BA with form factor bonus for larger classes
-        form_pulp = 1.0
-        form_cns = 1.1
-        form_saw = 1.2
-        
-        weighted_ba = ba_pulp * form_pulp + ba_cns * form_cns + ba_saw * form_saw
-        if weighted_ba > 0:
-            vol_pulp = tvob_total * (ba_pulp * form_pulp / weighted_ba)
-            vol_cns = tvob_total * (ba_cns * form_cns / weighted_ba)
-            vol_saw = tvob_total * (ba_saw * form_saw / weighted_ba)
-        else:
-            vol_pulp = vol_cns = vol_saw = 0.0
-    else:
-        vol_pulp = vol_cns = vol_saw = 0.0
+        pass
     
     return ProductDistribution(
-        tpa_pulp=tpa_pulp,
-        tpa_cns=tpa_cns,
-        tpa_saw=tpa_saw,
-        ba_pulp=ba_pulp,
-        ba_cns=ba_cns,
-        ba_saw=ba_saw,
-        vol_pulp=vol_pulp,
-        vol_cns=vol_cns,
-        vol_saw=vol_saw,
+        tpa_pulp=float(tpa_pulp),
+        tpa_cns=float(tpa_cns),
+        tpa_saw=float(tpa_saw),
+        ba_pulp=float(ba_pulp),
+        ba_cns=float(ba_cns),
+        ba_saw=float(ba_saw),
+        vol_pulp=float(pmrc_yields.pulpwood),
+        vol_cns=float(pmrc_yields.chip_n_saw),
+        vol_saw=float(pmrc_yields.sawtimber),
     )
 
 
