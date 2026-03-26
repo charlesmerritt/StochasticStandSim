@@ -17,7 +17,7 @@
 \usepackage[style=authoryear,
 backend=biber,
 isbn=false,
-maxcitenames=1,
+maxcitenames=2,
 mincitenames=1,
 maxbibnames=99
 ]{biblatex}
@@ -82,15 +82,42 @@ maxbibnames=99
 }
 \setcounter{tocdepth}{1} 
 
+\makeatletter
+\def\ps@myheadings{%
+  \let\@mkboth\@gobbletwo
+  \let\@oddhead\@empty
+  \let\@evenhead\@empty
+  \def\@oddfoot{\hfil\thepage\hfil}%
+  \let\@evenfoot\@oddfoot
+}
+\def\ps@plain{%
+  \let\@oddhead\@empty
+  \let\@evenhead\@empty
+  \def\@oddfoot{\hfil\thepage\hfil}%
+  \let\@evenfoot\@oddfoot
+}
+\let\ps@headings\ps@plain
+\let\ps@myheadings\ps@plain
+\makeatother
+
+\newcommand{\manualnumberedsection}[1]{%
+  \refstepcounter{section}%
+  \setcounter{subsection}{0}%
+  \section*{\thesection\quad #1}%
+  \phantomsection
+  \addcontentsline{toc}{section}{\protect\numberline{\thesection}#1}%
+}
+
 \begin{document}
 \pagenumbering{roman}
+\pagestyle{plain}
 
 \begin{abstract}
 Stand-level forest planning is commonly conducted with deterministic growth and yield models that assume a single, idealized trajectory of stand development. However, forest stands evolve under substantial uncertainty arising from stochastic growth variation and disturbance events such as pests, wildfire, and wind damage. This thesis develops a modular stand simulation framework that augments an established deterministic loblolly pine (\textit{Pinus taeda}) growth model with stochastic process noise and probabilistic disturbance regimes, and uses Monte Carlo simulation to quantify how uncertainty alters economic valuation.
 
-Rather than learning management policies through reinforcement learning, we evaluate a set of predefined, interpretable management prescriptions under both deterministic and stochastic dynamics. For each prescription and risk regime, repeated simulations generate a distribution of discounted cash flows and corresponding Net Present Value (NPV), with Land Expectation Value (LEV) reported when appropriate to enable comparison with classical forestry benchmarks. Outcomes are summarized using measures of central tendency and dispersion as well as downside risk metrics, including Value at Risk (VaR), Conditional Value at Risk (CVaR) to demonstrate tail-risk.
+In this work, we evaluate a set of predefined, interpretable management prescriptions under both deterministic and stochastic dynamics. For each prescription and risk regime, repeated simulations generate a distribution of discounted cash flows and corresponding Net Present Value (NPV), with Land Expectation Value (LEV) reported when appropriate to enable comparison with classical forestry benchmarks. Outcomes are summarized using measures of central tendency and dispersion as well as downside risk metrics, including Value at Risk (VaR), Conditional Value at Risk (CVaR) to demonstrate tail-risk.
 
-Results show that deterministic valuation can systematically mischaracterize stand value under uncertainty, particularly when low-probability, high-severity disturbances are present. Across increasing disturbance frequencies and severities, the stochastic valuation distributions exhibit substantial tail risk and increased variability relative to deterministic baselines, and financially preferred rotation ages and prescriptions may shift accordingly. Collectively, these findings demonstrate the importance of distributional valuation in long-horizon timber management and provide a practical framework for comparing prescription robustness under stochastic disturbance regimes.
+Results show that deterministic valuation can systematically mischaracterize stand value under uncertainty, particularly when low-probability, high-severity disturbances are possible. Across increasing disturbance frequencies and severities, the stochastic valuation distributions exhibit substantial tail risk and increased variability relative to deterministic baselines, and financially preferred rotation ages and prescriptions may shift accordingly. Collectively, these findings demonstrate the importance of distributional valuation in long-horizon timber management and provide a practical framework for comparing prescription robustness under stochastic disturbance regimes.
 \end{abstract}
 
 
@@ -102,7 +129,7 @@ I dedicate this work to my mother, whose unwavering support and guidance have sh
 
 \phantomsection
 \pseudochapter{Acknowledgments}
-This work was supported by the U.S. Department of Agriculture, Forest Service, Southern Region, Federal Grant Number 22-CS-11080100-232 (Talladega Division LiDAR Project). This work was also supported by the intramural research program of the U.S. Department of Agriculture, National Institute of Food and Agriculture, Sustainable Agricultural Systems program, PERSEUS grant, {\#}2023-68012-38992. The findings and conclusions in this work have not been formally disseminated by the U. S. Department of Agriculture and should not be construed to represent any agency determination or policy. The U.S. Government is authorized to reproduce and distribute reprints for governmental purposes notwithstanding any copyright annotation therein.
+This work was supported by the U.S. Department of Agriculture, National Institute of Food and Agriculture, Sustainable Agricultural Systems program, PERSEUS grant, {\#}2023-68012-38992. The findings and conclusions in this work have not been formally disseminated by the U. S. Department of Agriculture and should not be construed to represent any agency determination or policy. The U.S. Government is authorized to reproduce and distribute reprints for governmental purposes notwithstanding any copyright annotation therein.
 
 \tableofcontents
 
@@ -113,7 +140,7 @@ This work was supported by the U.S. Department of Agriculture, Forest Service, S
 \pagenumbering{arabic}  % Ordinary pages have Arabic numerals.
 
 \chapter{Introduction}
-\subsection{Background and Context}
+\section{Background and Context}
 Forest management decisions often span long time horizons, necessitating methods that anticipate future conditions and trade-offs. Yet most current stand-level planning models are deterministic, assuming a single, idealized trajectory of forest development. These models typically use optimization techniques to identify regimes that maximize a static objective (or set of objectives), most often timber volume or forest structure goals, though stands may also be managed for carbon sequestration, wildlife diversity, or recreation. In doing so, they often overlook a critical reality: forest stands are not deterministic environments.
 
 Rather, forest stands are subject to stochastic and dynamic processes. Growth trajectories are influenced not only by competition and ecological succession, but also by random disturbances such as wildfires, windthrow, ice storms, and pest outbreaks. These events are often abrupt, severe, and difficult to predict. Their effects propagate over time, altering successional pathways and disrupting static management plans. Despite this, such disturbances are often omitted from standard planning methods, which focus on idealized scenarios rather than risk-resilient strategies. Furthermore, disturbance events beyond a threshold of severity substantially increase the likelihood of sustained disturbances. For example, woody debris caused by wind damage increases forest fuel loads and subsequently the likelihood of wildfire while also increasing the susceptibility of trees to infestation from pests such as pine beetles due to their weakened state.
@@ -133,14 +160,15 @@ By reframing stand valuation as a distribution rather than a deterministic forec
 This thesis addresses several gaps: 
 \begin{itemize}
 \item The ubiquitous tendency to sidestep uncertainty in deterministic optimization models which leave out many probabilistic events that are relevant to growth but complicated to model as described by \textcite{stevensOptimalHarvestRates1986}.
-\item Limited use of distributional valuation metrics in stand-level planning, where deterministic point estimates often mask downside risk.
+\item The limited use of distributional valuation metrics in stand-level planning, where deterministic point estimates often mask downside risk.
 \item The missing link between tried and true empirical stand growth models \parencite{pmrcHarrisonYieldPredictionGrowth1996} and stochastic models that include both chaotic disturbances and growth factors.
 \end{itemize}
 We propose a framework that embraces stochasticity from the outset by embedding probabilistic disturbance processes within an established growth and yield model and evaluating heuristic "rule of thumb" management prescriptions through Monte Carlo simulation. This approach enables direct comparison between deterministic and stochastic valuation outcomes under varying disturbance regimes.
 
 This thesis investigates how probabilistic disturbance modeling can be integrated with established growth and yield models to evaluate forest stand value under uncertainty.
 
-\subsubsection{Stochastic vs. Deterministic Planning}
+\section{Stochastic vs. Deterministic Planning}
+In this work we address three key questions that challenge the use of deterministic modeling of pine stand development.
 
     \textbf{How does deterministic stand valuation differ from stochastic valuation under identical management prescriptions?} \\
     This question evaluates the extent to which conventional deterministic planning methods, such as fixed-rotation management optimized via LEV, diverge from valuation results obtained when stochastic disturbances and growth variability are explicitly modeled. Rather than comparing learned policies to deterministic schedules, we hold management prescriptions constant and examine how introducing stochastic disturbance processes alters expected value, variability, and downside risk.
@@ -151,7 +179,8 @@ This thesis investigates how probabilistic disturbance modeling can be integrate
     \textbf{Do changes in disturbance frequency and severity alter financially optimal rotation ages for even aged forests and prescription performance?} \\
     Classical optimal rotation theory identifies a single rotation age $T^*$ under deterministic assumptions. Under stochastic disturbance regimes, however, realized rotation values are distributed rather than fixed. This question investigates how increasing disturbance frequency and severity shift the distribution of economically optimal rotation ages for even-aged forests and whether prescriptions derived under deterministic assumptions remain robust when evaluated across stochastic realizations. In particular, we examine whether higher disturbance risk systematically favors shorter rotations or alternative rule-based prescriptions.
 
-\subsubsection{Simulation and Valuation Framework}
+\section{Simulation and Valuation Framework}
+In this work we address two important questions related to ackowledging uncertainty in pine stand development.
 
     \textbf{How can a stochastic stand simulator be structured to evaluate management prescriptions under uncertainty?} \\
     We model stand dynamics as a stochastic state transition process governed by mechanistic growth equations and probabilistic disturbance events. Management actions are specified through interpretable, rule-based prescriptions such as fixed rotation ages, thinning thresholds, and salvage responses. Rather than solving for an optimal policy through reinforcement learning, we simulate stand trajectories under each prescription across many Monte Carlo realizations to estimate the distribution of financial outcomes.
@@ -161,18 +190,18 @@ This thesis investigates how probabilistic disturbance modeling can be integrate
 
 Together, these questions clarify how incorporating stochastic disturbance processes changes economic valuation and prescription robustness in stand-level forest management.
 
-\subsubsection{Assumptions}
+\section{Modeling Assumptions}
 Every model has underlying assumptions, and it's worth discussing them early and directly. First and foremost, while the methods presented are general, almost all of this work was conducted with managed, even-aged, loblolly pine (\textit{Pinus taeda}) plantations 
 in mind. This simplifies the effort expended on factors such as species composition and competition. As such, our tree growth dynamics are modeled using region-specific equations provided by the Plantation Management Research Cooperative (PMRC). 
 For the complete formulation of the deterministic growth model, see \textcite{pmrcHarrisonYieldPredictionGrowth1996}.
 
 The stochastic kernel parameters that dictate the probability distributions for disturbances and growth variability are scenario-based, not empirically estimated. We explore uncertainty via structured parameter scenarios that span plausible ranges. All stochastic elements (e.g., disturbance probabilities, process noise intensity) are stationary within a scenario. The distribution parameters are chosen at the beginning and held fixed through the episode, which is equivalent to the rotation.
 
-We use a fixed rotation age of 35 years, slightly longer than the standard rotation for South Eastern pine plantations, to provide a consistent benchmark for comparing deterministic and stochastic outcomes. Discount rates, and management costs are also stationary and scenario-defined, they don’t evolve stochastically within a simulation. Stationarity is an important mathematical assumption for Markov processes, and the goal of this work is not to model the disturbance probabilities or economic factors themselves, but to understand the effect of these stochastic elements on stand value. For each of these values, we use the most recent estimates available from the literature.
+We use a fixed rotation age of 35 years, slightly longer than the standard rotation for Southern pine plantations, to provide a consistent benchmark for comparing deterministic and stochastic outcomes. Discount rates, and management costs are also stationary and scenario-defined, they don’t evolve stochastically within a simulation. Stationarity is an important mathematical assumption for Markov processes, and the goal of this work is not to model the disturbance probabilities or economic factors themselves, but to understand the effect of these stochastic elements on stand value. For each of these values, we use the most recent estimates available from the literature.
 
 Disturbances may have lagged effects (e.g., pest outbreaks causing gradual decline), which could be modeled with more complex recovery functions. In this work, disturbances do not alter future disturbance probabilities (e.g., one fire doesn’t reduce or increase the chance of another, except indirectly through changed stand state). When disturbances occur, a salvage fraction of 50\% is assumed available as revenue. 
 
-Stumpage and action prices are also stationary and defined by the latest literature \textcite{costsMaggardNatzke}. We impose the following feasibility constraints: $\text{TPA} \geq 100$, $\text{BA} \geq 0$, $\text{HD}$ is non-decreasing, and $\text{Age} > 0$. 
+Stumpage and action prices are also stationary and defined by the latest literature \textcite{costsMaggardNatzke}. We impose the following feasibility constraints: $\text{TPA} \geq 100$, $\text{BA} \geq 0$, $\text{HD}$ is non-decreasing, and $\text{Age} > 0$, where TPA is trees per acre, BA is basal area per acre, and HD is dominant tree height.
 
 Thinning, when applied as part of a fixed heuristic policy, is assumed to be ``from below'' to remove trees from the smallest size classes first. In this investigation into uncertainty of pine stand development, we don’t model harvest scheduling constraints, road access, policy restrictions, or multi-stand interactions, as this is framed as a single stand modeling problem.
 
@@ -197,10 +226,10 @@ The stochastic transition factorizes as:
 \[
 P(s_{t+1} \mid s_t, a_t) = P(z_t) \cdot P(q_t \mid z_t) \cdot P(s_{t+1} \mid s_t, a_t, z_t, q_t)
 \]
-where $z_t \in \{0,1\}$ indicates disturbance occurrence and $q_t \in [0,1]$ is disturbance severity. A deterministic growth model provides the baseline transition $\mu_{t+1} = f(s_t, a_t)$, interpreted as the mean biological trend. The stochastic extension introduces two sources of uncertainty:
+where $z_t \in \{0,1\}$ indicates disturbance occurrence and $q_t \in [0,1]$ is disturbance severity. $s_t$ is the stand state at time $t$ and $a_t$ is the management action at time $t$. A deterministic growth model provides the baseline transition $\mu_{t+1} = f(s_t, a_t)$, interpreted as the mean biological trend. The stochastic extension introduces two sources of uncertainty:
 
 \begin{enumerate}
-    \item \textbf{Process noise}: Multiplicative noise on growth increments, scaled by a global intensity parameter. When this parameter is zero, the stochastic model reduces exactly to the deterministic baseline.
+    \item \textbf{Process noise}: Multiplicative noise on growth increments, scaled by a global intensity parameter $\lambda_{proc}$. When this parameter is zero, the stochastic model reduces exactly to the deterministic baseline.
     \item \textbf{Disturbance events}: Discrete shocks with random occurrence and severity, applied as proportional reductions to state variables.
 \end{enumerate}
 
@@ -214,11 +243,11 @@ The Markov assumption serves as a modeling abstraction: the state vector is cons
 
 \subsection{Simulation Target}
 
-For fixed initial conditions, policy, and scenario parameters, the object of interest is the distribution of terminal value estimated via Monte Carlo simulation. This allows comparison of expected values, downside risk measures, and the probability of falling below deterministic benchmarks across uncertainty regimes. Specific distributional forms, parameter values, and experimental design are detailed in the Methods chapter.
+For fixed initial conditions, policy, and scenario parameters, the object of interest is the distribution of terminal value estimated via Monte Carlo simulation. This allows comparison of expected values, downside risk measures, and the probability of falling below deterministic benchmarks across uncertainty regimes. Specific distributional forms, parameter values, and experimental design are detailed in the Methods, Chapter 3.
 
 \section{Current State of Knowledge}
 \subsection{Net Present Value and Land Expectation Value}
-The standard approach to optimizing the set of management decisions (equivalently the ``management regime'' or the ``policy'' in an RL context) is to first determine the value of a single rotation for a stand and a given rotation age based on Net Present Value 
+The standard economic approach to optimizing the set of management decisions for an even-aged stand of pine trees(equivalently the ``management regime'' or the ``policy'' in an RL context) is to first determine the value of a single rotation for a stand and a given rotation age based on Net Present Value 
 (NPV).
 
 The net present value (NPV) of harvesting a forest stand at rotation age $T$ can be expressed as:
@@ -235,7 +264,7 @@ where:
     \item $T$ is the final rotation age.
 \end{itemize}
 
-Then, we expand on the definition of NPV to account for an infinite series of identical, even-aged rotations, starting from bare land. This is known as the Land Expectation Value (LEV). This formulation assumes that the same stand is regenerated and 
+Then, we expand on the definition of NPV to account for an infinite series of identical, even-aged rotations, starting from bare land. This is known as the Land Expectation Value (LEV). This formulation assumes that the same type of stand is regenerated and 
 harvested infinitely many times on the same land. It can be expressed as:
 
 \[
@@ -257,75 +286,85 @@ T^* = \arg\max_{T} \, LEV(T).
 
 
 Once $T^*$ has been defined for a stand, it is constant for the foreseeable future as long as business proceeds ``as usual''. Finding $T^*$ is then a matter of some importance, it defines our ``infinite and identical rotations'' for the LEV. 
-The standard method for establishing the optimal rotation age $T^*$ is to use the LEV to compare multiple rotation ages until the process converges on the rotation age that returns the highest value. There are other methods for determining the rotation age, 
+The standard method for establishing the optimal economic rotation age $T^*$ is to use the LEV to compare multiple rotation ages until the process converges on the rotation age that returns the highest value. There are other methods for determining the optimal rotation age, 
 for instance one could use the biological method. In that case, when the mean annual increment is maximized, it is time to cut the stand. Both methods yield viable choices for the optimal rotation age, and there are many other viable methods. 
-For a more detailed examination of methods relating to the assignment of $T^*$ see \textcite{BettingerAndLi2009}.
+(For a more detailed examination of methods relating to the assignment of $T^*$ see \cite{BettingerAndLi2009}).
 
-This method for calculating the value of the stand holds us to the assumption of ``infinite and identical rotations at the optimal rotation age'' in order to calculate the LEV. This assumption is extremely limiting, and in fact implicitly avoids uncertain outcomes. Nevertheless it remains an effective, easy, and robust way to calculate the economic value of a stand.
+This method for calculating the value of a stand holds us to the assumption of ``infinite and identical rotations at the optimal rotation age'' in order to calculate the LEV. This assumption is extremely limiting, and in fact implicitly avoids uncertain outcomes. Nevertheless it remains an effective, easy, and robust way to calculate the economic value of a stand.
 
 \subsection{Stochastic Forest Disturbance Modeling}
 Accurate representation of forest disturbances is critical to keep our simulation as close as possible to the real dynamics of forest growth. To this end, we rely on the following references.
 \begin{itemize}
-\item ``A hierarchical simulation-through-optimization approach to forest disturbance modeling'' \parencite{campbellHierarchicalSimulationthroughoptimizationApproach2007}
+\item ``A hierarchical simulation-through-optimization approach to forest disturbance modeling'' \parencite{campbellHierarchicalSimulationthroughoptimizationApproach2007}.
     This work offers insights into a Markov approach for forest-level modeling. They very simply alter the standard harvest scheduling approach by treating disturbances as if they were another type of harvesting activity with no revenue or cost. In this way, disturbed stands are implicitly seen as having no value. This method is general enough to allow them to "model any stand-replacing disturbance..." regardless of age. In calculating the likelihood of these disturbances for their spatial model, firstly they retrieved historical data for their study area that had similar rates of disturbances and harvest. Then, they discretize the likelihood of disturbance into decade-long bins, the same time-step used in their Markov model. Campbell \& Dewhurst offer a comprehensive methodology for defining a spatial Markov chain for forest-level modeling, especially with regards to getting an implementation of disturbances themselves that is not too complicated.
     
-\item ``Optimal Harvest Rates Considering the Risk of Forest Fire'' \parencite{stevensOptimalHarvestRates1986}
-    This thesis deals with a single risk type and offers some guidance on the ways in which people have tried to solve these problems historically. Specifically it compares a traditional "even-flow" model with a dynamic programming model to compare how fire-rate impacts harvest volumes.
+\item ``Optimal Harvest Rates Considering the Risk of Forest Fire'' \parencite{stevensOptimalHarvestRates1986}.
+    This thesis deals with a single risk type and offers some guidance on the ways in which people have tried to solve these problems historically. Specifically, it compares a traditional "even-flow" model with a dynamic programming model to compare how fire-rate impacts harvest volumes.
     
-\item ``Dealing with Non-linearity and Uncertainty in Forest Management'' \parencite{messierDealingNonlinearityUncertainty2016}
+\item ``Dealing with Non-linearity and Uncertainty in Forest Management'' \parencite{messierDealingNonlinearityUncertainty2016}.
+This article argues for a shift in forest management from traditional "command and control" approaches toward viewing forests as complex adaptive systems that prioritize resilience and adaptability. The authors propose incorporating non-linearity and uncertainty into practices by moving management targets from strict stand-level outcomes to a broader "envelope" of acceptable conditions.
 
-\item ``Stochastic or deterministic single-tree models: is there any difference in growth predictions?'' \parencite{fortinStochasticDeterministicSingletree2012}
+\item ``Stochastic or deterministic single-tree models: is there any difference in growth predictions?'' \parencite{fortinStochasticDeterministicSingletree2012}.
 Critically, this paper shows that there are differences between stochastic and deterministic simulations due to interactions between "nonlinear mechanisms underlying forest growth." 
 
-\item ``Forest Growth and Yield Modeling'' \parencite{weiskittelForestGrowthYield2011}
+\item ``Forest Growth and Yield Modeling'' \parencite{weiskittelForestGrowthYield2011}.
 This textbook provides a comprehensive view of several major techniques for forest models, but also a sizable section on stand-level modeling as well. 
 \end{itemize}
 
 \subsection{Stand-Level Optimization Practices}
+Stand-level optimization in forestry begain in the 1970's using dynamic programming and simulation methods. The determination of the optimal rotation age of even-aged stands of trees as well as optimal thinning regimes were of initial interest. Later, optimizing stand density become an important consideration \parencite{bettingerDensitydependentStandlevelOptimization2005}.
 \begin{itemize} 
 
-\item ``A density-dependent stand-level optimization approach for deriving management prescriptions for interior northwest (USA) landscapes'' \parencite{bettingerDensitydependentStandlevelOptimization2005}
+\item ``A density-dependent stand-level optimization approach for deriving management prescriptions for interior northwest (USA) landscapes'' \parencite{bettingerDensitydependentStandlevelOptimization2005}.
 \end{itemize}
 
 \subsection{Markov Decision Processes in Forest Modeling}
+Markov Decision Processes (MDPs) provide a robust mathematical framework for modeling forest management under conditions of inherent ecological and economic risk. Unlike deterministic models that assume a known future, MDPs treat forest evolution as a series of stochastic transitions between discrete states. These states are typically defined by biophysical variables such as basal area, tree size, and species composition. 
 \begin{itemize}
-\item ``Managing Forests for Carbon and Timber: A Markov Decision Model of Uneven-aged Forest Management With Risk'' \parencite{johnstonManagingForestsCarbon2017}
-\item ``A Graph-based Markov Decision Process approach for managing forests under risk of wind damage'' \parencite{forsellGraphbasedMarkovDecision2011}
+\item ``Managing Forests for Carbon and Timber: A Markov Decision Model of Uneven-aged Forest Management With Risk'' \parencite{johnstonManagingForestsCarbon2017}.
+Focused on the Pacific Northwest, this study integrates carbon offset prices directly into an MDP objective function. It finds that while moderate carbon prices enhance species and size diversity, but high prices may inadvertently promote monocultures as the forest is managed primarily for carbon.
+
+\item ``A Graph-based Markov Decision Process approach for managing forests under risk of wind damage'' \parencite{forsellGraphbasedMarkovDecision2011}.
+This article introduces Graph-based Markov Decision Processes to address the spatial complexities of wind damage risk in Swedish forests. By accounting for how neighboring stands provide topographical shelter, the model optimizes management policies to increase the expected NPV of stands.
+
+\item ``Adaptive economic and ecological forest management under risk'' \parencite{buongiornoAdaptiveEconomicEcological2015}.
+This article presents an adaptive management framework for mixed stands in the Southern U.S., it highlights that ignoring stochastic shocks leads to inaccurate ecological predictions. Using the theory of MDPs, the authors develop a framework for managing forests under uncertainty according to economic and ecological objectives.
+
 \end{itemize}
 
 \chapter{Methods}
 
 \section{Research Design}
 
-This study evaluates how deterministic and stochastic dynamics influence the economic valuation of a single forest stand under a fixed, rule-based management prescription. Rather than learning an optimal policy through reinforcement learning, we specify a heuristic basal-area-triggered thinning rule and compare financial outcomes under deterministic and stochastic growth scenarios.
+This study evaluates how deterministic and stochastic dynamics influence the economic valuation of a single forest stand under a fixed, rule-based management prescription. Rather than learning an optimal management policy under a continuous action-space (through a process such as reinforcement learning), we specify a single heuristic basal-area-triggered thinning rule and compare financial outcomes under deterministic and stochastic growth scenarios.
 
-The simulation framework models stand dynamics through annual state transitions over a 35-year rotation. The stand state $s_t = (a_t, h_t, n_t, b_t, S, r, \phi)$ consists of four dynamic variables---age, dominant height, trees per acre, and basal area---and three constants: site index at base age 25, PMRC region, and percent hardwood. Derived quantities such as volume and product yields are computed on-demand from these atomics. The stand is assumed to be even-aged and single-species (loblolly pine, \textit{Pinus taeda}), consistent with plantation conditions.
+The simulation framework models stand dynamics through annual state transitions over a 35-year rotation. The stand state $s_t = (a_t, h_t, n_t, b_t, S, r, \phi)$ consists of four dynamic variables---age ($a_t$), dominant height ($h_t$), trees per acre ($n_t$), and basal area ($b_t$)---and three constants: site index at base age 25 (S), PMRC region (r), and percent hardwood ($\phi$). Derived quantities such as volume and product yields are computed on-demand from these atomics. The stand is assumed to be even-aged and single-species (loblolly pine, \textit{Pinus taeda}), consistent with plantation conditions across the non-coastal areas of the Southern United States.
 
-Management is limited to a single heuristic thinning policy: thinning from below is triggered at age 15 when basal area exceeds 150 ft$^2$/ac, targeting a residual basal area of 100 ft$^2$/ac. Stumpage prices are fixed at \$9.51/ton (pulpwood), \$23.51/ton (chip-n-saw), and \$27.82/ton (sawtimber). Costs are also fixed: logging at \$150/acre, replanting at \$150.80/acre, and thinning at \$87.34/acre. A 5\% annual real discount rate is applied for NPV and LEV calculations.
+Management is limited to a single heuristic thinning policy: thinning from below is triggered at age 15 when basal area exceeds 150 ft$^2$/ac, targeting a residual basal area of 100 ft$^2$/ac. Stumpage prices are fixed at \$9.51/ton (pulpwood), \$23.51/ton (chip-n-saw), and \$27.82/ton (sawtimber). Costs are also fixed: logging at \$150/acre, replanting at \$150.80/acre, and thinning at \$87.34/acre. Prices are derived from the latest TimberMarket South report, while costs are derived from the \textcite{costsMaggardNatzke} market report and online dashboard. A 5\% annual real discount rate is applied for NPV and LEV calculations.
 
-The stochastic extension introduces two sources of uncertainty layered onto the deterministic PMRC backbone:
+The stochastic extension introduces two sources of uncertainty layered onto the deterministic PMRC model \parencite{pmrcHarrisonYieldPredictionGrowth1996}:
 \begin{itemize}
     \item \textbf{Process noise}: Multiplicative lognormal noise on BA and HD increments, with mean correction ensuring $\mathbb{E}[\text{multiplier}] = 1$. TPA mortality uses a binomial model. A global scaling parameter $\lambda_{\text{proc}} \in \{0, 0.25, 0.5, 1.0\}$ controls noise intensity.
     \item \textbf{Disturbance events}: Annual Bernoulli occurrence with probability $p_{\text{dist}} \in \{0, 1/30, 1/20, 1/10\}$. Conditional severity follows $\text{Beta}(m_q \kappa, (1-m_q)\kappa)$ with $m_q = 0.30$ and $\kappa = 12$. Shocks are proportional reductions to TPA and BA; dominant height is unaffected.
 \end{itemize}
 
-When $\lambda_{\text{proc}} = 0$ and $p_{\text{dist}} = 0$, the stochastic model reduces exactly to the deterministic PMRC baseline. This design ensures that differences in financial outcomes arise from uncertainty rather than model discrepancies.
+When $\lambda_{\text{proc}} = 0$ and $p_{\text{dist}} = 0$, the stochastic model reduces exactly to the deterministic PMRC model projection baseline. This design ensures that differences in financial outcomes arise from uncertainty rather than model discrepancies.
 
 The simulation environment consists of three primary components: a growth module, a disturbance module, and an economics module.
 
-\subsection{Management Prescriptions}
+\manualnumberedsection{Management Prescriptions}
 
 Management decisions are implemented through predefined, rule-based prescriptions rather than optimized control policies. Each prescription specifies treatment timing and intensity as a deterministic function of stand state variables. The prescriptions evaluated in this study include:
 
 \textbf{Fixed Rotation (FR-T)} \\
-The stand is harvested at a predetermined rotation age $T$. No intermediate treatments are applied unless explicitly specified. We evaluate a rotation age of 35 years to represent a plausible range for loblolly pine plantations.
+A pine stand is harvested at a predetermined rotation age $T$. No intermediate treatments are applied unless explicitly specified. We evaluate a rotation age of 35 years to represent a plausible range for loblolly pine plantations owned by private forest landowners in the Southern United States.
 
 \textbf{Basal Area Threshold Thinning (BAT)} 
 A thinning from below is triggered when basal area exceeds a threshold $BA^*$. A fixed proportion $\tau$ of merchantable volume is removed at that time. Harvest occurs at a specified rotation age $T$.
 
 Each prescription is applied identically across deterministic and stochastic simulations. This ensures that differences in financial outcomes arise from disturbance and growth variability rather than adaptive changes in management.
 
-\subsection{Growth Module}
+\manualnumberedsection{Growth Module}
 
 ``Yield Prediction and Growth Projection for
 Site-Prepared Loblolly Pine Plantations in the Carolinas, Georgia, Alabama and Florida'' \parencite{pmrcHarrisonYieldPredictionGrowth1996}
@@ -338,15 +377,15 @@ The growth module projects ordinary stand development using equations from \text
     n_{t+1} &= f_n(n_t, S, a_t, a_{t+1}) && \text{(Survival equation)} \\
     b_{t+1} &= f_b(a_t, n_t, n_{t+1}, b_t, h_t, h_{t+1}, a_{t+1}, r) &&
 \end{align}
-where $h$ is dominant height, $n$ is trees per acre, $b$ is basal area, $S$ is site index, and $r$ is the PMRC region. This projection order respects the dependencies among state variables: age advances first, then height (which depends on age), then survival (which depends on site index and age), and finally basal area (which depends on all preceding variables).
+This projection order respects the dependencies among state variables: age advances first, then height (which depends on age), then survival (which depends on site index and age), and finally basal area (which depends on all preceding variables).
 
 The growth module is validated by comparing simulated trajectories to empirical growth patterns reported for managed loblolly pine plantations. Separating growth from disturbance dynamics allows clear interpretation of baseline stand development prior to stochastic modification.
 
-\subsection{Disturbance Module}
+\manualnumberedsection{Disturbance Module}
 
 Disturbances are modeled as a generic event with Bernoulli occurence and a conditional Beta severity drawn conditional on occurence. The severity is used to determine the proportion of merchantable volume lost by applying a one-time shock to the atomic variables of the stand state and updating the state accordingly, and then checking for feasibility.
 
-The occurence of a disturbance in a given year is an independent Bernoulli trial with probability $p_{dist}$, where $p_{dist}$ is defined as the mean return interval in years. This corresponds to a description of disturbances as "occuring once every n years" where n is the return interval.
+The occurence of a disturbance in a given year is an independent Bernoulli trial with probability $p_{dist}$, where $p_{dist}$ is defined as the mean return interval in years. This corresponds to a description of disturbances as "occuring once every \textit{n} years" where \textit{n} is the return interval.
 
 \begin{table}[htbp]
   \centering
@@ -364,7 +403,7 @@ The occurence of a disturbance in a given year is an independent Bernoulli trial
   \end{tabular}
 \end{table}
 
-\subsection{Economics and Cashflow Modeling}
+\manualnumberedsection{Economics and Cashflow Modeling}
 
 The economics module converts simulated harvest and treatment decisions into annual cashflows. Revenues are calculated from harvested product classes (pulpwood, chip-and-saw, sawtimber) using fixed stumpage prices. Treatment costs are assigned according to regional estimates \parencite{costsMaggardNatzke}.
 
@@ -384,7 +423,7 @@ NPV = \sum_{t=0}^{T} \frac{CF_t}{(1+r)^t},
 
 where $r$ is the discount rate. When appropriate, Land Expectation Value (LEV) is derived from the rotation-level NPV to enable comparison with classical deterministic forestry benchmarks.
 
-\subsection{Evaluation Metrics}
+\manualnumberedsection{Evaluation Metrics}
 
 For each management prescription and disturbance regime, Monte Carlo simulation produces a distribution of NPV outcomes. Results are summarized using:
 
@@ -458,7 +497,7 @@ Table \ref{tab:scenario_codes} defines the scenario naming convention used throu
   \end{tabular}
 \end{table}
 
-Figure \ref{fig:npv-boxplots} summarizes NPV distributions across the full factorial of process noise intensity ($\lambda_{\text{proc}}$) and disturbance probability ($p_{\text{dist}}$). As either source of uncertainty increases, median NPV declines and interquartile range widens. The deterministic baseline (dashed line) lies above nearly all stochastic medians, confirming that ignoring uncertainty systematically overstates expected returns.
+Figure \ref{fig:npv-boxplots} summarizes NPV distributions across the full factorial of process noise intensity ($\lambda_{\text{proc}}$) and disturbance probability ($p_{\text{dist}}$). As either source of uncertainty increases, median NPV declines and interquartile range widens. The deterministic baseline (dashed line) lies above nearly all stochastic medians, confirming that ignoring uncertainty systematically overstates expected returns. Figure \ref{fig:product-distribution} shows several validation metrics for the deterministic scenario in terms of stand development and product distributions. Figure \ref{fig:thin-response} shows the manner in which thinning response is handled in the model using a competition index. Figure \ref{fig:npv-heatmap} presents mean NPV as a heatmap over the same parameter grid. The gradient from upper-left (low noise, low disturbance) to lower-right (high noise, high disturbance) illustrates the compounding effect of both uncertainty sources on expected stand value.
 
 \begin{figure}[htbp]
   \centering
@@ -501,17 +540,19 @@ The shape of the terminal value distribution shifts with disturbance regime. Fig
   \label{fig:hist-high-dist}
 \end{figure}
 
+The full set of terminal value histograms for all stochastic scenarios is provided in the appendix.
+
 \chapter{Discussion}
 The central result of this study is that disturbance risk changes both expected value and the shape of the value 
 distribution of a pine plantation managed in the southern United States. Deterministic projections of growth and yield provide a useful reference point, but they systematically underrepresent 
-downside dispersion when disturbance frequency increases. As risk increases, reductions in dominant height and basal 
+downside dispersion when disturbance frequency increases. As risk increases, reductions in mean dominant tree height and basal 
 area are accompanied by lower terminal stand value and wider value dispersion, indicating that expected-value 
 comparisons alone are insufficient for management decisions in uncertain settings.
 
 The trajectory diagnostics provide additional insight into the structural mechanisms underlying this valuation gap. 
-Under increasing frequency of disturbances, mean dominant height and basal area diverge substantially from the deterministic 
-baseline as repeated disturbances interrupt stand development. At the same time, trees-per-acre (TPA) may remain elevated 
-under high-risk scenarios due to repeated stand resets followed by regeneration at high planting densities. This creates 
+Under increasing frequency of disturbances, mean dominant tree height and basal area diverge substantially from the deterministic 
+baseline as repeated disturbances interrupt stand development. At the same time, tree density may remain elevated 
+under high-risk scenarios due to repeated stand resets followed by regeneration and replanting at high initial densities. This creates 
 a structural pattern in which stands maintain density but fail to accumulate merchantable volume. The resulting stand 
 structure differs fundamentally from deterministic projections, which assume uninterrupted growth and gradual density 
 decline through competition and thinning.

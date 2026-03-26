@@ -8,3 +8,5 @@ loggers arent very precise anyways!
 deterministic management: final harvest at end of rotation (35)
 
 
+format check:
+page numbers should be in top right corner OR in bottom center, NOT both
