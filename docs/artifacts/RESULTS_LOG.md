@@ -194,6 +194,52 @@ uv run pytest tests/ -v
 
 ---
 
+## 2026-03-28: Salvage Sensitivity Analysis
+
+### Changes Made
+
+1. **Salvage action implemented** (`core/config.py`, `core/simulate.py`)
+   - Added `salvage_enabled`, `salvage_severity_threshold`, `salvage_price_fraction` to `ScenarioConfig`
+   - Added `salvage` and `salvage_revenue` fields to `YearRecord`
+   - Added `salvage_count`, `total_salvage_revenue`, `salvage_years` to `ScenarioResult`
+   - Added `salvage_counts`, `salvage_revenues` arrays to `BatchResult`
+   - Salvage logic in `_run_stochastic()`: when severity ≥ threshold, clearcut remaining volume at 50% stumpage, pay logging + replanting, reset stand to initial conditions
+   - Discounted salvage cashflows accumulated and added to NPV
+   - Default `salvage_enabled=False` preserves all existing results
+
+2. **Experiment script** (`scripts/run_salvage_sensitivity.py`)
+   - Runs dist_30, dist_20, dist_10 with and without salvage (6 batch runs, 1000 trajectories each)
+   - Salvage threshold = p75 of Beta(3.6, 8.4) ≈ 0.3832
+   - Outputs: manifest.json, npv/lev comparison CSVs, scenario_summaries.csv, raw arrays, validation figure
+
+### Runs Executed
+
+```bash
+uv run python scripts/run_salvage_sensitivity.py
+# Result: 6 scenarios completed, artifacts written to data/salvage_sensitivity/
+
+uv run pytest tests/ -q --ignore=tests/test_pmrc_alignment.py
+# Result: 27 passed (pre-existing alignment test failure excluded)
+```
+
+### Key Findings
+
+- Salvage consistently improves mean NPV across all disturbance regimes
+- Effect scales with disturbance frequency:
+  - dist_30: mean NPV $689 → $704 (+$15), 0.29 salvage events/rotation
+  - dist_20: mean NPV $567 → $593 (+$26), 0.44 salvage events/rotation
+  - dist_10: mean NPV $262 → $326 (+$64), 0.90 salvage events/rotation
+- VaR₅% also improves, especially under high disturbance: dist_10 VaR₅% from -$165 to -$122
+- Salvage provides larger absolute improvement under higher disturbance frequency
+
+### Next Steps
+
+- Update thesis Economics section to describe salvage as a management action (fix incorrect "50% of damaged volume" claim)
+- Add salvage results subsection to thesis with table and figure
+- Consider sweeping the salvage threshold as additional sensitivity analysis
+
+---
+
 ## Template for Future Entries
 
 ```markdown

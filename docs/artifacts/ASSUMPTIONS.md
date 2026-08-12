@@ -50,6 +50,10 @@ One-line statements of all modeling assumptions currently in effect.
 - Fixed heuristic BAT thinning policy (not optimized).
 - Thinning at age 15 if BA > 150 ft²/ac, thin to 100 ft²/ac.
 - Thinning from below (smallest trees removed first).
+- Salvage is a severity-triggered stand-reset action (optional, disabled by default).
+- Salvage triggers when disturbance severity ≥ p75 of Beta(3.6, 8.4) ≈ 0.383.
+- Salvage clearcuts all remaining post-disturbance volume at 50% stumpage, then resets stand to initial conditions.
+- Multiple salvage events per rotation are possible; thinning flag resets after salvage.
 
 ## Economics
 
@@ -57,6 +61,8 @@ One-line statements of all modeling assumptions currently in effect.
 - Costs are fixed (logging: $150, replanting: $150.80, thinning: $87.34 per acre).
 - Discount rate is 5% annual real rate.
 - Terminal value is product-based (sum of price × yield by class).
+- Salvage revenue = 50% of normal stumpage × remaining post-disturbance merchantable volume − logging cost.
+- Salvage incurs replanting cost ($150.80/ac) for stand reset.
 
 ## Epistemic Treatment
 

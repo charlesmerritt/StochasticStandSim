@@ -80,6 +80,17 @@ experiments:
     n_trajectories: 10000
     seed: 42
 
+  salvage_sensitivity:
+    description: "Salvage action sensitivity: compare disturbance-only scenarios with and without salvage"
+    scenarios: [dist_30, dist_30_salvage, dist_20, dist_20_salvage, dist_10, dist_10_salvage]
+    n_trajectories: 1000
+    seed: 42
+    salvage:
+      enabled: true
+      severity_threshold: 0.3832  # p75 of Beta(3.6, 8.4)
+      price_fraction: 0.50
+    output_dir: "data/salvage_sensitivity/"
+
 # =============================================================================
 # Validation Runs
 # =============================================================================

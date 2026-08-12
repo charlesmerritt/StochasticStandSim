@@ -110,6 +110,80 @@ What each test checks and what counts as acceptable behavior.
 
 ---
 
+## Test Suite: `tests/test_deterministic_validation.py`
+
+Comprehensive validation of the deterministic PMRC growth model across six areas. All tests run against 5 scenario configurations spanning regions UCP, PUCP, and LCP with SI25 ∈ {60, 70, 75, 80, 90}.
+
+### TestSI25Consistency (54 parameterized tests)
+
+**What it checks**: SI25 ↔ HD consistency across all regions, multiple site indices (50–90), and starting ages (3, 5, 10). Verifies that `hd_project(age0, hd0, 25)` recovers SI25, and that the `si25 → hd → si25` round-trip is exact. Also checks step-by-step projection matches direct SI curve evaluation for all regions.
+
+**Acceptable behavior**: HD at age 25 within 0.01 ft of SI25. Round-trip error < 1e-6. Step-by-step projection matches curve within 0.02 ft.
+
+---
+
+### TestGrowthTrajectoryShape (31 tests)
+
+**What it checks**: Biological reasonableness of deterministic trajectories:
+- HD monotonically increasing with concave (decreasing) annual increments
+- TPA monotonically decreasing and never below the 100-tree asymptote
+- BA and TVOB monotonically increasing
+- Higher SI25 produces higher HD and volume at every age (cross-scenario)
+
+**Acceptable behavior**: All monotonicity and ordering properties hold at every time step across all 5 scenarios.
+
+---
+
+### TestProductDistribution (28 tests)
+
+**What it checks**: Product volumes are age-appropriate and internally consistent:
+- All product volumes ≥ 0 at every age
+- Sum of merchantable products ≤ total TVOB (sub-merchantable not allocated)
+- Total merchantable volume increases with age
+- Young stands (age ≤ 10) have negligible sawtimber (<1% of total)
+- Mature stands (age 30+, SI90) have meaningful sawtimber (>5%)
+- Product mix shifts toward CNS+sawtimber as QMD grows (age 15 vs 35)
+
+**Acceptable behavior**: All assertions pass. Sawtimber fraction thresholds are conservative lower bounds.
+
+---
+
+### TestThinningFromBelow (10 tests)
+
+**What it checks**: Uses gold CSVs (scenario_1_thin, scenario_2_thin) to verify:
+- Post-thin QMD > pre-thin QMD (the defining property of low thinning)
+- HD unchanged by thinning
+- BA and TPA both reduced
+- Post-thin product mix has higher CNS+sawtimber fraction than pre-thin
+
+**Acceptable behavior**: All properties hold for both thinning scenarios.
+
+---
+
+### TestInternalConsistency (14 tests)
+
+**What it checks**: Derived quantities are internally consistent:
+- QMD satisfies `sqrt(BA / TPA / 0.005454154)` identity at every step
+- QMD monotonically increasing over the no-thin rotation
+- Weibull class totals `sum(tpa_per_class) ≈ TPA` and `sum(ba_per_class) ≈ BA` within 5%
+- Prediction-form BA close to projection-form BA along the trajectory (within 10%)
+
+**Acceptable behavior**: Identity checks within 1e-6. Weibull totals within 5%. BA predict vs project within 10%.
+
+---
+
+### TestYieldCrossChecks (14 tests)
+
+**What it checks**: Volume unit ordering and magnitude sanity:
+- DWIB ≤ TVIB ≤ TVOB at every age with positive volume
+- GWOB ≤ TVOB at every age
+- TVOB at age 25, SI75 in range 2000–7000 cuft/ac (loblolly pine benchmarks)
+- TVOB at age 35, SI90 in range 4000–12000 cuft/ac
+
+**Acceptable behavior**: All orderings hold. Magnitude ranges are conservative bounds from PMRC tech report expectations.
+
+---
+
 ## Running Tests
 
 ```bash
