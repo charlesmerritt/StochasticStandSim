@@ -165,7 +165,28 @@ class PMRCModel:
         # projection-consistent
         return si25 * (self.c / (1.0 - exp(-self.k))) ** -self.m
 
-    # ---------- Survival (TPA) ----------
+    # # ---------- Survival (TPA) ----------
+    # def tpa_project(self, tpa1: float, si25: float, age1: float, age2: float) -> float:
+    #     """
+    #     Replicates R: squares g. Holds TPA if <= asymptote.
+    #     TPA2 = 100 + ( (TPA1-100)^-p + (g^2)*SI25*(A2^r - A1^r) )^(-1/p)
+    #     """
+    #     if age1 < 0 or age2 < 0:
+    #         raise ValueError("ages must be >= 0")
+    #     if age2 < age1:
+    #         raise ValueError("age2 must be >= age1")
+    #     if tpa1 <= 0 or si25 <= 0:
+    #         raise ValueError("tpa1 and si25 must be positive")
+    #     if tpa1 <= self.min_tpa_asymptote:
+    #         return tpa1
+    #     p, g, r = self.p, self.g, self.r
+    #     inner = ((tpa1 - 100.0) ** -p) + (g ** 2) * si25 * ((age2 ** r) - (age1 ** r))
+    #     if inner <= 0:
+    #         raise ValueError("invalid survival projection: inner term <= 0")
+
+    #     return 100.0 + inner ** (-(1.0 / p))
+
+            # ---------- Survival (TPA) ----------
     def tpa_project(self, tpa1: float, si25: float, age1: float, age2: float) -> float:
         """
         Replicates R: squares g. Holds TPA if <= asymptote.

@@ -11,6 +11,8 @@ dependencies = [
     "dataclasses>=0.8",
     "ruff>=0.14.14",
     "pytest>=9.0.2",
+    "scipy>=1.15.3",
+    "xlrd>=2.0.2",
 ]
 
 [dependency-groups]

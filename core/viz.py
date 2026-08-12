@@ -304,6 +304,15 @@ def plot_terminal_histogram(
     ax.axvline(mean_val, color='green', linestyle='-', linewidth=1.5,
                label=f'Mean: ${mean_val:.0f}')
     
+    # Add VaR and CVaR indicators
+    var_5 = float(np.percentile(values, 5))
+    below_var = values[values <= var_5]
+    cvar_5 = float(np.mean(below_var)) if len(below_var) > 0 else var_5
+    ax.axvline(var_5, color='darkorange', linestyle='-.', linewidth=1.5,
+               label=f'VaR 5%: ${var_5:.0f}')
+    ax.axvline(cvar_5, color='purple', linestyle=':', linewidth=2,
+               label=f'CVaR 5%: ${cvar_5:.0f}')
+    
     ax.set_xlabel(xlabel)
     ax.set_ylabel('Density')
     ax.set_title(f'Distribution of {metric.upper()}: {batch.scenario_name}')
@@ -1188,25 +1197,58 @@ def plot_stochastic_growth_demo(
     return fig
 
 
+_DEFAULT_METRIC_SPECS: list[tuple[str, str]] = [
+    ("hd", "Dominant height (ft)"),
+    ("ba", "Basal area (ft²/ac)"),
+    ("tpa", "Trees per acre"),
+]
+
+_METRIC_LABELS: dict[str, str] = {
+    "hd": "Dominant height (ft)",
+    "ba": "Basal area (ft²/ac)",
+    "tpa": "Trees per acre",
+    "vol": "Volume (ft³/ac)",
+    "qmd": "Quadratic mean diameter (in)",
+    "vol_pulp": "Pulpwood volume (ft³/ac)",
+    "vol_cns": "Chip-n-saw volume (ft³/ac)",
+    "vol_saw": "Sawtimber volume (ft³/ac)",
+}
+
+
 def plot_disturbance_regime_comparison(
     results: dict[str, BatchResult | ScenarioResult],
     labels: dict[str, str] | None = None,
     show_sd: bool = False,
     figsize: tuple[float, float] = (9, 10),
+    variables: list[str] | None = None,
 ) -> Figure:
-    """Compare mean HD, BA, and TPA trajectories across disturbance regimes."""
+    """Compare mean trajectories across disturbance regimes.
+
+    Args:
+        results: Mapping of scenario key to BatchResult or ScenarioResult.
+        labels: Optional display labels for each scenario key.
+        show_sd: Whether to draw ±1 SD ribbons.
+        figsize: Figure size.
+        variables: List of variable names to plot (default: hd, ba, tpa).
+            Supported values: any attribute on YearRecord, plus ``"qmd"``.
+    """
     import matplotlib.pyplot as plt
 
     if not results:
         raise ValueError("At least one scenario result is required")
 
+    if variables is None:
+        metric_specs = _DEFAULT_METRIC_SPECS
+    else:
+        metric_specs = [
+            (v, _METRIC_LABELS.get(v, v)) for v in variables
+        ]
+
     ordered_names = list(results.keys())
-    fig, axes = plt.subplots(3, 1, figsize=figsize, sharex=True, dpi=200)
-    metric_specs = [
-        ("hd", "Dominant height (ft)"),
-        ("ba", "Basal area (ft²/ac)"),
-        ("tpa", "Trees per acre"),
-    ]
+    n_panels = len(metric_specs)
+    fig, axes = plt.subplots(n_panels, 1, figsize=figsize, sharex=True, dpi=200)
+    if n_panels == 1:
+        axes = [axes]
     palette = ["#27ae60", "#e67e22", "#c0392b", "#8e44ad", "#2c3e50"]
 
     for color, name in zip(palette * len(ordered_names), ordered_names):

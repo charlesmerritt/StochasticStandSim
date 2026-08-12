@@ -43,6 +43,8 @@ class YearRecord:
     thinned: bool = False
     thin_ba_removed: float = 0.0
     thin_revenue: float = 0.0
+    salvage: bool = False
+    salvage_revenue: float = 0.0
 
 
 @dataclass
@@ -98,6 +100,11 @@ class ScenarioResult:
     disturbance_count: int = 0
     mean_disturbance_severity: float = 0.0
     max_disturbance_severity: float = 0.0
+    
+    # Salvage summary
+    salvage_count: int = 0
+    total_salvage_revenue: float = 0.0
+    salvage_years: list[int] = field(default_factory=list)
     
     # Parameters used
     discount_rate: float = 0.05
@@ -384,6 +391,9 @@ def _run_stochastic(
     total_thin_revenue = 0.0
     disturbance_years: list[int] = []
     disturbance_severities: list[float] = []
+    salvage_years_list: list[int] = []
+    total_salvage_revenue = 0.0
+    salvage_pv = 0.0
     
     for year in range(1, config.rotation_length + 1):
         state, trace = stochastic.sample_next_state(state, dt=1.0, rng=rng)
@@ -396,6 +406,32 @@ def _run_stochastic(
         if trace.disturbance_label:
             disturbance_years.append(year)
             disturbance_severities.append(trace.disturbance_severity)
+        
+        # Salvage check: if disturbance severity exceeds threshold, harvest
+        # remaining volume at discounted stumpage, then reset to initial state.
+        salvaged = False
+        salvage_rev = 0.0
+        if (
+            config.salvage_enabled
+            and trace.disturbance_label
+            and trace.disturbance_severity >= config.salvage_severity_threshold
+        ):
+            salvage_yield = _compute_terminal_yield(state, pmrc, prices, costs)
+            salvage_rev = (
+                salvage_yield.gross_revenue * config.salvage_price_fraction
+                - costs.logging
+            )
+            salvage_rev = max(0.0, salvage_rev)
+            net_salvage_cashflow = salvage_rev - costs.replanting
+            salvage_pv += net_salvage_cashflow / (
+                (1 + config.discount_rate) ** year
+            )
+            total_salvage_revenue += salvage_rev
+            salvage_years_list.append(year)
+            salvaged = True
+            # Reset stand to initial conditions
+            state = initial_state
+            stochastic.action_model.reset_rotation()
         
         trajectory.append(YearRecord(
             year=year,
@@ -411,6 +447,8 @@ def _run_stochastic(
             thinned=thinned,
             thin_ba_removed=trace.thin_ba_removed,
             thin_revenue=trace.thin_revenue,
+            salvage=salvaged,
+            salvage_revenue=salvage_rev,
         ))
     
     # Compute terminal yield
@@ -425,6 +463,8 @@ def _run_stochastic(
         discount_rate=config.discount_rate,
         establishment_cost=costs.replanting,
     )
+    # Add discounted salvage cashflows to NPV
+    npv += salvage_pv
     
     lev = compute_lev(npv, config.rotation_length, config.discount_rate)
     disturbance_count = len(disturbance_years)
@@ -453,6 +493,9 @@ def _run_stochastic(
         disturbance_count=disturbance_count,
         mean_disturbance_severity=mean_disturbance_severity,
         max_disturbance_severity=max_disturbance_severity,
+        salvage_count=len(salvage_years_list),
+        total_salvage_revenue=total_salvage_revenue,
+        salvage_years=salvage_years_list,
         discount_rate=config.discount_rate,
         prices=prices,
         costs=costs,
@@ -497,6 +540,8 @@ class BatchResult:
     max_disturbance_severities: np.ndarray
     disturbance_years: list[list[int]]
     disturbance_severity_paths: list[list[float]]
+    salvage_counts: np.ndarray
+    salvage_revenues: np.ndarray
     scenario_config: ScenarioConfig
     trajectories: list[ScenarioResult] | None = None
 
@@ -545,6 +590,8 @@ def run_batch(
     max_disturbance_severities = np.zeros(n_trajectories)
     disturbance_years: list[list[int]] = []
     disturbance_severity_paths: list[list[float]] = []
+    salvage_counts = np.zeros(n_trajectories, dtype=int)
+    salvage_revenues = np.zeros(n_trajectories)
     trajectories: list[ScenarioResult] | None = [] if store_trajectories else None
     
     for i in range(n_trajectories):
@@ -572,6 +619,8 @@ def run_batch(
         max_disturbance_severities[i] = result.max_disturbance_severity
         disturbance_years.append(list(result.disturbance_years))
         disturbance_severity_paths.append(list(result.disturbance_severities))
+        salvage_counts[i] = result.salvage_count
+        salvage_revenues[i] = result.total_salvage_revenue
         
         if trajectories is not None:
             trajectories.append(result)
@@ -596,6 +645,8 @@ def run_batch(
         max_disturbance_severities=max_disturbance_severities,
         disturbance_years=disturbance_years,
         disturbance_severity_paths=disturbance_severity_paths,
+        salvage_counts=salvage_counts,
+        salvage_revenues=salvage_revenues,
         scenario_config=config,
         trajectories=trajectories,
     )

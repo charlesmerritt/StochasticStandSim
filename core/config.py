@@ -101,6 +101,11 @@ class ScenarioConfig:
     prices: ProductPrices | None = field(default_factory=ProductPrices)
     costs: HarvestCosts | None = field(default_factory=HarvestCosts)
     
+    # Salvage action parameters
+    salvage_enabled: bool = False
+    salvage_severity_threshold: float = 0.3832  # p75 of Beta(3.6, 8.4)
+    salvage_price_fraction: float = 0.50
+    
     # Monte Carlo settings
     n_trajectories: int = 1000
     seed: int | None = None
