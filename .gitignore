@@ -1,9 +1,32 @@
 __pycache__/
+*/__pycache__/
 .venv/
+.pytest_cache/
 wandb/
 logs/
 pmrc/
-!data/example_stands.csv
 models/
-*/__pycache__/
 paper/build/
+
+# --- Source data (kept tracked) ---
+# (negations below protect source inputs from the generated-artifact rules)
+!data/example_stands.csv
+
+# --- Generated experiment outputs (regenerate from config via scripts/run_*.py) ---
+data/experiment_results/
+data/experiment_results_nothin/
+data/salvage_comprehensive/
+data/salvage_sensitivity/
+data/salvage_sensitivity_extreme/
+data/salvage_sensitivity_median/
+
+# --- Generated figures / plots / arrays (regenerate via examples/*.py, scripts/*.py) ---
+output/
+plots/*.png
+paper/figs/*.png
+# keep hand-authored source diagram (not script-generated)
+!paper/figs/agent_env_loop_barto_rl.png
+*.npz
+
+# --- Generated build artifacts ---
+paper/thesis.pdf
